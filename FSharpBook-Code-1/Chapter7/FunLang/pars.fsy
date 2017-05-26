@@ -1,0 +1,59 @@
+// =============================================================
+// Дмитрий Сошников: Функциональное программирования на языке F#
+//                               http://www.soshnikov.com/fsharp
+// -------------------------------------------------------------
+// Глава 7: Решение типовых задач
+// =============================================================
+
+// Парсер для простого модельного функционального языка
+
+%{
+// This prelude is F# code that is available throughout this file. In this
+// case we just open a module to reveal some datatype definitions.
+open Ast
+
+%}
+
+// The start token becomes a parser function in the compiled code: */
+%start start
+
+// These are the terminal tokens of the grammar along with the types of
+// the data carried by each token:
+%token <string> ID
+%token <System.Int32> INT
+%token LET LETREC FUN IN LPAREN RPAREN END BEGIN IF THEN ELSE SEMI EOF PLUS MINUS TIMES DIV EQ ARROW DOT LESS MORE
+
+
+// This is the type of the data produced by a successful reduction of the 'start'
+// symbol:
+%type < Ast.prog > start
+
+%%
+
+// These are the rules of the grammar along with the F# code of the 
+// actions executed as rules are reduced.  In this case the actions 
+// produce data using F# data construction terms.
+start: Prog { $1 }
+
+Prog: Expr { $1 }
+
+SimpleExpr: 
+    | ID                      { Var($1) }
+    | INT                     { Int($1)  }
+    | PLUS { PFunc("+")  }
+    | MINUS { PFunc("-")  }
+    | TIMES { PFunc("*")  }
+    | LESS { PFunc("<") }
+    | MORE { PFunc(">") }
+    | DIV { PFunc("/")  }
+    | FUN ID ARROW Expr { Lam($2,$4) }
+    | LPAREN Expr RPAREN { $2 }
+    | IF Expr THEN Expr ELSE Expr { Cond($2,$4,$6) }
+    | LET ID EQ Expr IN Expr { Let($2,$4,$6) }
+    | LETREC ID EQ Expr IN Expr { LetRec($2,$4,$6) }
+
+Expr: AppList { $1 }
+
+AppList:
+    | SimpleExpr { $1 }
+    | AppList DOT SimpleExpr { App($1,$3) }

@@ -1,0 +1,2605 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:pingback="http://madskills.com/public/xml/rss/module/pingback/" xmlns:trackback="http://madskills.com/public/xml/rss/module/trackback/" xmlns:wfw="http://wellformedweb.org/CommentAPI/" xmlns:slash="http://purl.org/rss/1.0/modules/slash/" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <channel>
+    <title>Dmitry Soshnikov [MSFT]</title>
+    <link>http://blogs.gotdotnet.ru/personal/sos/</link>
+    <description>Academic Developer Evangelist, Microsoft Rus</description>
+    <copyright>Dmitry Soshnikov</copyright>
+    <lastBuildDate>Wed, 27 Aug 2008 13:02:55 GMT</lastBuildDate>
+    <generator>newtelligence dasBlog 1.9.6238.0</generator>
+    <managingEditor>dmitryso@microsoft.com</managingEditor>
+    <webMaster>dmitryso@microsoft.com</webMaster>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=52a0c8e8-e3aa-46a8-8d2c-a3ae843efe47</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=52a0c8e8-e3aa-46a8-8d2c-a3ae843efe47</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=52a0c8e8-e3aa-46a8-8d2c-a3ae843efe47</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=52A0C8E8-E3AA-46A8-8D2C-A3AE843EFE47</wfw:commentRss>
+      <slash:comments>17</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Недавно в кино показывали фильм - очередные X-Files, cекретные материалы. Я даже хотел
+пойти, в надежде увидеть там "курильщика", однако пропустил по срокам. Вчера вечером
+решили наверстать упущенное в домашних условиях.
+</P>
+        <P>
+Надо сказать, фильм хороший. Хороший тем, что я смог, глядя на него вполглаза, за
+это время реализовать на языке F# интерпретатор машины Тьюринга в пятерках. О том,
+как я это сделал - я вам и расскажу. Надеюсь, это будет хорошим экскурсом в язык F#
+и функциональное программирование. Если и не очень хорошим - то по крайней мере первым,
+поскольку я планирую все больше записей в своем блоге посвящать теме функционального
+программирования.
+</P>
+        <P>
+Итак, что же такое машина Тьюринга? Это математическая модель, применяемая в теории
+алгоритмов, которая соответствует простому вычислительному устройству с полубесконечной
+лентой, которое может двигаться по ленте и писать туда символы в соответствии с некоторой
+программой. Например, программа для сложения двух записанных на ленте через пробел
+двоичных чисел выглядит так:
+</P>
+        <BLOCKQUOTE>
+          <TABLE cellspacing="0" cellpadding="2" width="612" border="1">
+            <TBODY>
+              <TR>
+                <TD valign="top" width="188">
+                  <P>
+(0,'0','0',0,R); 
+<BR>
+(0,'1','1',0,R); 
+<BR>
+(0,' ',' ',1,R); 
+<BR>
+(1,'0','0',1,R); 
+<BR>
+(1,'1','1',1,R); 
+<BR>
+(1,' ',' ',2,L);
+</BR></BR></BR></BR></BR></P>
+                </TD>
+                <TD valign="top" width="217">
+                  <P>
+(2,'1','0',3,L); 
+<BR>
+(2,'0','1',2,L); 
+<BR>
+(2,' ',' ',5,R); 
+<BR>
+(3,'1','1',3,L); 
+<BR>
+(3,'0','0',3,L); 
+<BR>
+(3,' ',' ',4,L);
+</BR></BR></BR></BR></BR></P>
+                </TD>
+                <TD valign="top" width="204">
+                  <P>
+(4,'1','0',4,L); 
+<BR>
+(4,'0','1',0,R); 
+<BR>
+(4,' ',' ',0,R); 
+<BR>
+(5,'1',' ',5,R); 
+<BR>
+(5,' ',' ',5,H)
+</BR></BR></BR></BR></P>
+                </TD>
+              </TR>
+            </TBODY>
+          </TABLE>
+        </BLOCKQUOTE>
+        <P>
+Каждая пятерка в программе - это команда, которая выполняется, когда состояние головки
+и текущий символ на ленте равны первым двум элементам в пятерке. Тогда на ленту записывается
+указанный третьим номером символ, головка переходит в указанное (на четвертой позиции)
+состояние, и головка передвигается в соответствии с указанной командой (L-влево, R-вправо,
+H-остановка).
+</P>
+        <P>
+Посмотрим, как описать все это на F#. Для начала опишем типы данных:
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT face="Courier New">
+              <FONT color="#0000ff">
+type
+</FONT>
+base = char;; 
+<BR><FONT color="#0000ff">
+type
+</FONT>
+state = int*int;; 
+<BR><FONT color="#0000ff">
+type
+</FONT>
+ribbon = int -&gt; base;; 
+<BR><FONT color="#0000ff">
+type
+</FONT>
+op = L | R | U | H;; 
+<BR><FONT color="#0000ff">
+type
+</FONT>
+instr = state * base * base * state * op;; 
+<BR><FONT color="#0000ff">
+type
+</FONT>
+program = instr list;;
+</BR></BR></BR></BR></BR></FONT>
+          </P>
+          <P>
+            <FONT face="Courier New">
+              <FONT color="#0000ff">
+type
+</FONT>
+MT = program * state * ribbon;;
+</FONT>
+          </P>
+        </BLOCKQUOTE>
+        <P>
+Тут base - базовый тип символов на ленте, state - состояние машины, пара целых чисел,
+из которых первое - номер текущего символа, второе - состояние головки, ribbon - лента,
+описываемся как функция из целых чисел в базовый тип, op - символ операции, instr
+- пятерка, одна инструкция программы, program - сама программа, список таких инструкций,
+и наконец MT - собственно машина Тьюринга.
+</P>
+        <P>
+С такими описаниями приведенная выше машина сложения двух чисел запишется следующим
+образом:
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT color="#0000ff">
+let
+</FONT>
+mtadd = 
+<BR>
+( 
+<BR>
+[ (0,'0','0',0,R); 
+<BR>
+   (0,'1','1',0,R); 
+<BR>
+   (0,' ',' ',1,R); 
+<BR>
+   (1,'0','0',1,R); 
+<BR>
+   (1,'1','1',1,R); 
+<BR>
+   (1,' ',' ',2,L); 
+<BR>
+   (2,'1','0',3,L); 
+<BR>
+   (2,'0','1',2,L); 
+<BR>
+   (2,' ',' ',5,R); 
+<BR>
+   (3,'1','1',3,L); 
+<BR>
+   (3,'0','0',3,L); 
+<BR>
+   (3,' ',' ',4,L); 
+<BR>
+   (4,'1','0',4,L); 
+<BR>
+   (4,'0','1',0,R); 
+<BR>
+   (4,' ',' ',0,R); 
+<BR>
+   (5,'1',' ',5,R); 
+<BR>
+   (5,' ',' ',5,H)], 
+<BR>
+   (0,0),mkrib "001110 101");;
+</BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></BR></P>
+        </BLOCKQUOTE>
+        <P>
+Где mkrib - функция преобразования строки в ленту:
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT color="#0000ff">
+let
+</FONT>
+empty = 
+<FONT color="#0000ff">
+fun
+</FONT>
+x -&gt; ' ';; 
+<BR><FONT color="#0000ff">
+let
+</FONT>
+ins c n rib = 
+<FONT color="#0000ff">
+fun
+</FONT>
+x -&gt; 
+<BR>
+  
+<FONT color="#0000ff">
+if
+</FONT>
+n=x 
+<FONT color="#0000ff">
+then
+</FONT>
+c 
+<FONT color="#0000ff">
+else
+</FONT>
+rib x;; 
+</BR></BR></P>
+          <P>
+            <FONT color="#0000ff">
+let
+</FONT>
+mkrib (s:string) = 
+<BR>
+ <FONT color="#0000ff">
+let rec
+</FONT>
+f n = 
+<FONT color="#0000ff">
+function
+</FONT><BR>
+    [] -&gt; empty 
+<BR>
+  | h::t -&gt; ins h n (f (n+1) t) in 
+<BR>
+  s.ToCharArray() |&gt; List.of_array |&gt; (f 0);;
+</BR></BR></BR></BR></P>
+        </BLOCKQUOTE>
+        <P>
+Здесь также определена функция пустой ленты empty и вставки (записи) символа на ленту.
+Обратите внимание, что функция вставки берет на вход ленту-функцию и возвращает такую
+же функцию в качестве результата. В описании mkrib использована промежуточная (локальная)
+функция f берет на вход текущий номер символа (0,1,2 и т.д.) и остаточный массив,
+вставляет первый символ на указанную позицию в ленту, после чего повторяет все тоже
+самое с остатком массива. Основная функция преобразует строку в массив символов, затем
+в список символов, и применяет к списку функцию f.
+</P>
+        <P>
+Один шаг работы машины определяется следующей функцией step:
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT color="#0000ff">
+let
+</FONT>
+step (P,(sym,st),rib) = 
+<BR>
+  
+<FONT color="#0000ff">
+let
+</FONT>
+s = rib sym 
+<FONT color="#0000ff">
+in
+</FONT><BR>
+  
+<FONT color="#0000ff">
+let
+</FONT>
+(_,_,nchr,nst,cmd) = List.find(<FONT color="#0000ff">
+fun
+</FONT>
+(q,c,_,_,_) -&gt; (q=st)&amp;&amp;(c=s)) P 
+<FONT color="#0000ff">
+in
+</FONT><BR>
+  
+<FONT color="#0000ff">
+let
+</FONT>
+nsym = proc sym cmd 
+<FONT color="#0000ff">
+in
+</FONT><BR>
+  (P,(nsym,nst),ins nchr sym rib);;
+</BR></BR></BR></BR></P>
+        </BLOCKQUOTE>
+        <P>
+Функция получает на вход машину с программой P, лентой rib, текущим символом sym и
+состоянием st. Далее вычисляется текущий символ на ленте (rib(sym)) и в программе
+P ищется подходящая пятерка, из которой извлекаются новый символ nchr, новое состояние
+nst и команда движения cmd. Далее при помощи вспомогательной функции proc обрабатывается
+команда и вычисляется новое положение головки (текущий символ), после чего возвращается
+новое состояние. Функция proc описывается так:
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT color="#0000ff">
+let
+</FONT>
+proc n = 
+<FONT color="#0000ff">
+function
+</FONT>
+R -&gt; n+1 | L -&gt; n-1 | U -&gt; n | H -&gt; -1 ;;
+</P>
+        </BLOCKQUOTE>
+        <P>
+При выполнении команды H текущий номер символа становится -1, и машина переходит в
+терминальное состояние:
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT color="#0000ff">
+let
+</FONT>
+terminal MT = 
+<BR>
+  
+<FONT color="#0000ff">
+match
+</FONT>
+MT 
+<FONT color="#0000ff">
+with
+</FONT><BR>
+    (_,(n,_),_) 
+<FONT color="#0000ff">
+when
+</FONT>
+n&lt;0 -&gt; 
+<FONT color="#0000ff">
+true
+</FONT><BR>
+  | _ -&gt; 
+<FONT color="#0000ff">
+false
+</FONT>
+;;
+</BR></BR></BR></P>
+        </BLOCKQUOTE>
+        <P>
+Теперь чтобы проследить выполнение всей программы необходимо описать функцию, которая
+по сути вычисляет неподвижную точку step:
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT color="#0000ff">
+let rec
+</FONT>
+run MT = 
+<BR>
+  
+<FONT color="#0000ff">
+if
+</FONT>
+terminal MT 
+<FONT color="#0000ff">
+then
+</FONT>
+MT 
+<BR>
+  
+<FONT color="#0000ff">
+else
+</FONT><BR>
+     
+<FONT color="#0000ff">
+let
+</FONT>
+n = 
+<FONT color="#0000ff">
+step
+</FONT>
+MT 
+<FONT color="#0000ff">
+in
+</FONT><BR>
+     
+<FONT color="#0000ff">
+let
+</FONT>
+_ = 
+<FONT color="#0000ff">
+print
+</FONT>
+n 
+<FONT color="#0000ff">
+in
+</FONT><BR>
+     run (n);;
+</BR></BR></BR></BR></BR></P>
+        </BLOCKQUOTE>
+        <P>
+Здесь функция print служит для печати состояния машины на каждом шаге. Ее описание
+может быть таким (надо признаться, над функцией print я работал дольше всего, чтобы
+окружить текущий символ в квадратные скобки):
+</P>
+        <BLOCKQUOTE>
+          <P>
+            <FONT color="#0000ff">
+let
+</FONT>
+print (P,(sym,st),rib) = 
+<BR>
+  
+<FONT color="#0000ff">
+let
+</FONT>
+aux n i (c:<FONT color="#0000ff">
+char
+</FONT>
+) = 
+<FONT color="#0000ff">
+if
+</FONT>
+i=n 
+<FONT color="#0000ff">
+then
+</FONT>
+"["+c.ToString()+"]" 
+<FONT color="#0000ff">
+else
+</FONT>
+c.ToString() 
+<FONT color="#0000ff">
+in
+</FONT><BR>
+  printfn "q=%2d, p=%2d %s" st sym 
+<BR>
+    ([ 
+<FONT color="#0000ff">
+for
+</FONT>
+i 
+<FONT color="#0000ff">
+in
+</FONT>
+0..10 -&gt; aux sym i (rib i) ] 
+<BR>
+      |&gt; List.fold_left(<FONT color="#0000ff">
+fun
+</FONT>
+ac c -&gt; ac+c) "");;
+</BR></BR></BR></BR></P>
+        </BLOCKQUOTE>
+        <P>
+Тут определяется промежуточная функция aux, которая из символа делает строку - либо
+просто соответствующую этому символу, либо [c], если два переданных ей числа равны.
+Далее чтобы напечатать ленту мы формируем список из символов - для этого испольуется
+т.н. list comprehension, выражение вида [for i = 1 to 10 -&gt; x*2]. После этого список
+сворачивается в строку при помощи функции fold_left.
+</P>
+        <P>
+Не то, чтобы написание интерпретатора МТ было очень сложным занятием, но мне показалось,
+что на функциональном языке оно делается проще, или по крайней мере ближе к математическому
+определению. Оперировать приходится в терминах функций, типы данных строить в терминах
+декартова произведения и функционального отображения. Более того, поскольку мы нигде
+не упоминали размер ленты, а чистый функциональный язык может быть транслирован
+в лямбда-исчисление, то приведенная программа, за исключением функции print, может
+служить формальным доказательством полноты лямбда-исчисления по Тьюрингу. И все это
+было сделано за несколько десятков минут в перерывах между просмотром X-Files.
+</P>
+        <P>
+Я отдаю себе отчет, что данная заметка никак не может рассматриваться как убедительное
+доказательство того, зачем обычным программистам изучать F#. Такие доказательства
+я еще неоднократно приведу в своем блоге и на выступлениях. Сейчас же мне скорее любопытно
+- многие ли из читателей блога изучали в университете или самостоятельно теорию алгоритмов
+и понятие машины Тьюринга?
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=52A0C8E8-E3AA-46A8-8D2C-A3AE843EFE47" />
+      </body>
+      <title>Секретные материалы, или машина Тьюринга на F# за полтора часа</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=52a0c8e8-e3aa-46a8-8d2c-a3ae843efe47</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=52a0c8e8-e3aa-46a8-8d2c-a3ae843efe47</link>
+      <pubDate>Wed, 27 Aug 2008 13:02:55 GMT</pubDate>
+      <description>&lt;P&gt;
+Недавно в кино показывали фильм - очередные X-Files, cекретные материалы. Я даже хотел
+пойти, в надежде увидеть там "курильщика", однако пропустил по срокам. Вчера вечером
+решили наверстать упущенное в домашних условиях.
+&lt;/P&gt;
+&lt;P&gt;
+Надо сказать, фильм хороший. Хороший тем, что я смог, глядя на него вполглаза, за
+это время реализовать на языке F# интерпретатор машины Тьюринга в пятерках. О том,
+как я это сделал - я вам и расскажу. Надеюсь, это будет хорошим экскурсом в язык F#
+и функциональное программирование. Если и не очень хорошим - то по крайней мере первым,
+поскольку я планирую все больше записей в своем блоге посвящать теме функционального
+программирования.
+&lt;/P&gt;
+&lt;P&gt;
+Итак, что же такое машина Тьюринга? Это математическая модель, применяемая в теории
+алгоритмов, которая соответствует простому вычислительному устройству с полубесконечной
+лентой, которое может двигаться по ленте и писать туда символы в соответствии с некоторой
+программой. Например, программа для сложения двух записанных на ленте через пробел
+двоичных чисел выглядит так:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;TABLE cellspacing=0 cellpadding=2 width=612 border=1&gt;
+&lt;TBODY&gt;
+&lt;TR&gt;
+&lt;TD valign=top width=188&gt;
+&lt;P&gt;
+(0,'0','0',0,R); 
+&lt;BR&gt;
+(0,'1','1',0,R); 
+&lt;BR&gt;
+(0,' ',' ',1,R); 
+&lt;BR&gt;
+(1,'0','0',1,R); 
+&lt;BR&gt;
+(1,'1','1',1,R); 
+&lt;BR&gt;
+(1,' ',' ',2,L);
+&lt;/P&gt;
+&lt;/TD&gt;
+&lt;TD valign=top width=217&gt;
+&lt;P&gt;
+(2,'1','0',3,L); 
+&lt;BR&gt;
+(2,'0','1',2,L); 
+&lt;BR&gt;
+(2,' ',' ',5,R); 
+&lt;BR&gt;
+(3,'1','1',3,L); 
+&lt;BR&gt;
+(3,'0','0',3,L); 
+&lt;BR&gt;
+(3,' ',' ',4,L);
+&lt;/P&gt;
+&lt;/TD&gt;
+&lt;TD valign=top width=204&gt;
+&lt;P&gt;
+(4,'1','0',4,L); 
+&lt;BR&gt;
+(4,'0','1',0,R); 
+&lt;BR&gt;
+(4,' ',' ',0,R); 
+&lt;BR&gt;
+(5,'1',' ',5,R); 
+&lt;BR&gt;
+(5,' ',' ',5,H)
+&lt;/P&gt;
+&lt;/TD&gt;
+&lt;/TR&gt;
+&lt;/TBODY&gt;
+&lt;/TABLE&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Каждая пятерка в программе - это команда, которая выполняется, когда состояние головки
+и текущий символ на ленте равны первым двум элементам в пятерке. Тогда на ленту записывается
+указанный третьим номером символ, головка переходит в указанное (на четвертой позиции)
+состояние, и головка передвигается в соответствии с указанной командой (L-влево, R-вправо,
+H-остановка).
+&lt;/P&gt;
+&lt;P&gt;
+Посмотрим, как описать все это на F#. Для начала опишем типы данных:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT face="Courier New"&gt;
+&lt;FONT color=#0000ff&gt;
+type
+&lt;/FONT&gt;
+base = char;; 
+&lt;BR&gt;
+&lt;FONT color=#0000ff&gt;
+type
+&lt;/FONT&gt;
+state = int*int;; 
+&lt;BR&gt;
+&lt;FONT color=#0000ff&gt;
+type
+&lt;/FONT&gt;
+ribbon = int -&amp;gt; base;; 
+&lt;BR&gt;
+&lt;FONT color=#0000ff&gt;
+type
+&lt;/FONT&gt;
+op = L | R | U | H;; 
+&lt;BR&gt;
+&lt;FONT color=#0000ff&gt;
+type
+&lt;/FONT&gt;
+instr = state * base * base * state * op;; 
+&lt;BR&gt;
+&lt;FONT color=#0000ff&gt;
+type
+&lt;/FONT&gt;
+program = instr list;;
+&lt;/FONT&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;FONT face="Courier New"&gt;
+&lt;FONT color=#0000ff&gt;
+type
+&lt;/FONT&gt;
+MT = program * state * ribbon;;
+&lt;/FONT&gt;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Тут base - базовый тип символов на ленте, state - состояние машины, пара целых чисел,
+из которых первое - номер текущего символа, второе - состояние головки, ribbon - лента,
+описываемся как функция из целых чисел в базовый тип, op - символ операции, instr
+- пятерка, одна инструкция программы, program - сама программа, список таких инструкций,
+и наконец MT - собственно машина Тьюринга.
+&lt;/P&gt;
+&lt;P&gt;
+С такими описаниями приведенная выше машина сложения двух чисел запишется следующим
+образом:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+mtadd = 
+&lt;BR&gt;
+( 
+&lt;BR&gt;
+[ (0,'0','0',0,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (0,'1','1',0,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (0,' ',' ',1,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (1,'0','0',1,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (1,'1','1',1,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (1,' ',' ',2,L); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (2,'1','0',3,L); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (2,'0','1',2,L); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (2,' ',' ',5,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (3,'1','1',3,L); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (3,'0','0',3,L); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (3,' ',' ',4,L); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (4,'1','0',4,L); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (4,'0','1',0,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (4,' ',' ',0,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (5,'1',' ',5,R); 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (5,' ',' ',5,H)], 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp; (0,0),mkrib "001110 101");;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Где mkrib - функция преобразования строки в ленту:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+empty = 
+&lt;FONT color=#0000ff&gt;
+fun
+&lt;/FONT&gt;
+x -&amp;gt; ' ';; 
+&lt;BR&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+ins c n rib = 
+&lt;FONT color=#0000ff&gt;
+fun
+&lt;/FONT&gt;
+x -&amp;gt; 
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+if
+&lt;/FONT&gt;
+n=x 
+&lt;FONT color=#0000ff&gt;
+then
+&lt;/FONT&gt;
+c 
+&lt;FONT color=#0000ff&gt;
+else
+&lt;/FONT&gt;
+rib x;; 
+&lt;/P&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+mkrib (s:string) = 
+&lt;BR&gt;
+&amp;nbsp;&lt;FONT color=#0000ff&gt;
+let rec
+&lt;/FONT&gt;
+f n = 
+&lt;FONT color=#0000ff&gt;
+function
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp; [] -&amp;gt; empty 
+&lt;BR&gt;
+&amp;nbsp; | h::t -&amp;gt; ins h n (f (n+1) t) in 
+&lt;BR&gt;
+&amp;nbsp; s.ToCharArray() |&amp;gt; List.of_array |&amp;gt; (f 0);;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Здесь также определена функция пустой ленты empty и вставки (записи) символа на ленту.
+Обратите внимание, что функция вставки берет на вход ленту-функцию и возвращает такую
+же функцию в качестве результата. В описании mkrib использована промежуточная (локальная)
+функция f берет на вход текущий номер символа (0,1,2 и т.д.) и остаточный массив,
+вставляет первый символ на указанную позицию в ленту, после чего повторяет все тоже
+самое с остатком массива. Основная функция преобразует строку в массив символов, затем
+в список символов, и применяет к списку функцию f.
+&lt;/P&gt;
+&lt;P&gt;
+Один шаг работы машины определяется следующей функцией step:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+step (P,(sym,st),rib) = 
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+s = rib sym 
+&lt;FONT color=#0000ff&gt;
+in
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+(_,_,nchr,nst,cmd) = List.find(&lt;FONT color=#0000ff&gt;
+fun
+&lt;/FONT&gt;
+(q,c,_,_,_) -&amp;gt; (q=st)&amp;amp;&amp;amp;(c=s)) P 
+&lt;FONT color=#0000ff&gt;
+in
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+nsym = proc sym cmd 
+&lt;FONT color=#0000ff&gt;
+in
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp; (P,(nsym,nst),ins nchr sym rib);;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Функция получает на вход машину с программой P, лентой rib, текущим символом sym и
+состоянием st. Далее вычисляется текущий символ на ленте (rib(sym)) и в программе
+P ищется подходящая пятерка, из которой извлекаются новый символ nchr, новое состояние
+nst и команда движения cmd. Далее при помощи вспомогательной функции proc обрабатывается
+команда и вычисляется новое положение головки (текущий символ), после чего возвращается
+новое состояние. Функция proc описывается так:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+proc n = 
+&lt;FONT color=#0000ff&gt;
+function
+&lt;/FONT&gt;
+R -&amp;gt; n+1 | L -&amp;gt; n-1 | U -&amp;gt; n | H -&amp;gt; -1 ;;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+При выполнении команды H текущий номер символа становится -1, и машина переходит в
+терминальное состояние:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+terminal MT = 
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+match
+&lt;/FONT&gt;
+MT 
+&lt;FONT color=#0000ff&gt;
+with
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp; (_,(n,_),_) 
+&lt;FONT color=#0000ff&gt;
+when
+&lt;/FONT&gt;
+n&amp;lt;0 -&amp;gt; 
+&lt;FONT color=#0000ff&gt;
+true
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp; | _ -&amp;gt; 
+&lt;FONT color=#0000ff&gt;
+false
+&lt;/FONT&gt;
+;;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Теперь чтобы проследить выполнение всей программы необходимо описать функцию, которая
+по сути вычисляет неподвижную точку step:
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let rec
+&lt;/FONT&gt;
+run MT = 
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+if
+&lt;/FONT&gt;
+terminal MT 
+&lt;FONT color=#0000ff&gt;
+then
+&lt;/FONT&gt;
+MT 
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+else
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+n = 
+&lt;FONT color=#0000ff&gt;
+step
+&lt;/FONT&gt;
+MT 
+&lt;FONT color=#0000ff&gt;
+in
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+_ = 
+&lt;FONT color=#0000ff&gt;
+print
+&lt;/FONT&gt;
+n 
+&lt;FONT color=#0000ff&gt;
+in
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; run (n);;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Здесь функция print служит для печати состояния машины на каждом шаге. Ее описание
+может быть таким (надо признаться, над функцией print я работал дольше всего, чтобы
+окружить текущий символ в квадратные скобки):
+&lt;/P&gt;
+&lt;BLOCKQUOTE&gt;
+&lt;P&gt;
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+print (P,(sym,st),rib) = 
+&lt;BR&gt;
+&amp;nbsp; 
+&lt;FONT color=#0000ff&gt;
+let
+&lt;/FONT&gt;
+aux n i (c:&lt;FONT color=#0000ff&gt;
+char
+&lt;/FONT&gt;
+) = 
+&lt;FONT color=#0000ff&gt;
+if
+&lt;/FONT&gt;
+i=n 
+&lt;FONT color=#0000ff&gt;
+then
+&lt;/FONT&gt;
+"["+c.ToString()+"]" 
+&lt;FONT color=#0000ff&gt;
+else
+&lt;/FONT&gt;
+c.ToString() 
+&lt;FONT color=#0000ff&gt;
+in
+&lt;/FONT&gt;
+&lt;BR&gt;
+&amp;nbsp; printfn "q=%2d, p=%2d %s" st sym 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp; ([ 
+&lt;FONT color=#0000ff&gt;
+for
+&lt;/FONT&gt;
+i 
+&lt;FONT color=#0000ff&gt;
+in
+&lt;/FONT&gt;
+0..10 -&amp;gt; aux sym i (rib i) ] 
+&lt;BR&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; |&amp;gt; List.fold_left(&lt;FONT color=#0000ff&gt;
+fun
+&lt;/FONT&gt;
+ac c -&amp;gt; ac+c) "");;
+&lt;/P&gt;
+&lt;/BLOCKQUOTE&gt;
+&lt;P&gt;
+Тут определяется промежуточная функция aux, которая из символа делает строку - либо
+просто соответствующую этому символу, либо [c], если два переданных ей числа равны.
+Далее чтобы напечатать ленту мы формируем список из символов - для этого испольуется
+т.н. list comprehension, выражение вида [for i = 1 to 10 -&amp;gt; x*2]. После этого список
+сворачивается в строку при помощи функции fold_left.
+&lt;/P&gt;
+&lt;P&gt;
+Не то, чтобы написание интерпретатора МТ было очень сложным занятием, но мне показалось,
+что на функциональном языке оно делается проще, или по крайней мере ближе к математическому
+определению. Оперировать приходится в терминах функций, типы данных строить в терминах
+декартова произведения и функционального отображения. Более того, поскольку мы нигде
+не упоминали размер ленты, а&amp;nbsp;чистый функциональный язык может быть транслирован
+в лямбда-исчисление, то приведенная программа, за исключением функции print, может
+служить формальным доказательством полноты лямбда-исчисления по Тьюрингу. И все это
+было сделано за несколько десятков минут в перерывах между просмотром X-Files.
+&lt;/P&gt;
+&lt;P&gt;
+Я отдаю себе отчет, что данная заметка никак не может рассматриваться как убедительное
+доказательство того, зачем обычным программистам изучать F#. Такие доказательства
+я еще неоднократно приведу в своем блоге и на выступлениях. Сейчас же мне скорее любопытно
+- многие ли из читателей блога изучали в университете или самостоятельно теорию алгоритмов
+и понятие машины Тьюринга?
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=52A0C8E8-E3AA-46A8-8D2C-A3AE843EFE47" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=52a0c8e8-e3aa-46a8-8d2c-a3ae843efe47</comments>
+      <category>Functional Programming;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=dbb4bc42-71ec-4e95-9292-fe3c2ac47f95</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=dbb4bc42-71ec-4e95-9292-fe3c2ac47f95</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=dbb4bc42-71ec-4e95-9292-fe3c2ac47f95</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=DBB4BC42-71EC-4E95-9292-FE3C2AC47F95</wfw:commentRss>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Я не очень интересуюсь спортом, но тем не менее знаю, что на днях начинаются олимпийские
+игры. Тем, кто не сможет смотреть соревнования по телевизору, предлагается принять
+участие в виртуальных олимпийских соревнованиях на платформе Microsoft Popfly. Выбирайте
+свой вид спорта - и побеждайте!
+</P>
+        <P>
+          <A href="http://popfly.com/users/team/light%20the%20torches">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image002" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image002_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://popfly.com/users/team/soccer">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image005" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image005_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://popfly.com/users/team/track%20and%20field">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image008" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image008_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://popfly.com/users/team/archery">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image011" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image011_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://popfly.com/users/team/long%20jump">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image014" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image014_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+        </P>
+        <P>
+          <A href="http://popfly.com/users/team/weightlifting">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image017" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image017_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://popfly.com/users/team/boxing">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image020" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image020_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://www.popfly.com/users/Team/Gymnastics">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image022" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image022_3.gif" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://www.popfly.com/users/Team/Diving">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image026" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image026_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+          <A href="http://www.popfly.com/users/Team/Synchronized%20Swimming">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="121" alt="clip_image030" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image030_3.jpg" width="84" border="0">
+            </IMG>
+          </A>
+        </P>
+        <P>
+Меня сразу привлекли соревнования по поднятию тяжестей - предлагаю вам поиграть в
+игру прямо с этой страницы! Используя Live ID, вы можете увековечить свой рекорд.
+Используя кнопку share - поделиться игрой с друзьями. Все это стало возможно благодаря
+удивительной платформе для конструирования игр Popfly Game Creator.
+</P>
+        <P>
+          <IFRAME style="WIDTH: 500px; HEIGHT: 375px" src="http://www.popfly.com/users/team/Weightlifting.small" frameborder="no" allowtransparency="allowtransparency">
+          </IFRAME>
+        </P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=DBB4BC42-71EC-4E95-9292-FE3C2AC47F95" />
+      </body>
+      <title>Олимпийские игры не выходя из браузера</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=dbb4bc42-71ec-4e95-9292-fe3c2ac47f95</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=dbb4bc42-71ec-4e95-9292-fe3c2ac47f95</link>
+      <pubDate>Thu, 07 Aug 2008 06:15:35 GMT</pubDate>
+      <description>&lt;P&gt;
+Я не очень интересуюсь спортом, но тем не менее знаю, что на днях начинаются олимпийские
+игры. Тем, кто не сможет смотреть соревнования по телевизору, предлагается принять
+участие в виртуальных олимпийских соревнованиях на платформе Microsoft Popfly. Выбирайте
+свой вид спорта - и побеждайте!
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://popfly.com/users/team/light%20the%20torches"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image002 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image002_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://popfly.com/users/team/soccer"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image005 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image005_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://popfly.com/users/team/track%20and%20field"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image008 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image008_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://popfly.com/users/team/archery"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image011 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image011_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://popfly.com/users/team/long%20jump"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image014 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image014_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://popfly.com/users/team/weightlifting"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image017 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image017_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://popfly.com/users/team/boxing"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image020 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image020_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://www.popfly.com/users/Team/Gymnastics"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image022 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image022_3.gif" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://www.popfly.com/users/Team/Diving"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image026 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image026_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://www.popfly.com/users/Team/Synchronized%20Swimming"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=121 alt=clip_image030 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/02068730cd41_903F/clip_image030_3.jpg" width=84 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+Меня сразу привлекли соревнования по поднятию тяжестей - предлагаю вам поиграть в
+игру прямо с этой страницы! Используя Live ID, вы можете увековечить свой рекорд.
+Используя кнопку share - поделиться игрой с друзьями. Все это стало возможно благодаря
+удивительной платформе для конструирования игр Popfly Game Creator.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;IFRAME style="WIDTH: 500px; HEIGHT: 375px" src="http://www.popfly.com/users/team/Weightlifting.small" frameborder=no allowtransparency&gt;
+&lt;/IFRAME&gt;
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=DBB4BC42-71EC-4E95-9292-FE3C2AC47F95" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=dbb4bc42-71ec-4e95-9292-fe3c2ac47f95</comments>
+      <category>Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=69f15528-1619-460a-b2af-92cfb0fdeab0</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=69f15528-1619-460a-b2af-92cfb0fdeab0</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=69f15528-1619-460a-b2af-92cfb0fdeab0</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=69F15528-1619-460A-B2AF-92CFB0FDEAB0</wfw:commentRss>
+      <slash:comments>21</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Висту принято не любить. Она медленная, требует более 4 гигабайт оперативной памяти
+и при этом не умеет их поддерживать, в ней не появилось ничего нового по сравнению
+с Windows XP - много приходится слышать аргументов.
+</P>
+        <P>
+          <A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/329a66840303_9D1/image_2.png">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="261" alt="image" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/329a66840303_9D1/image_thumb.png" width="376" border="0">
+            </IMG>
+          </A>
+        </P>
+        <P>
+Чтобы разобраться в ситуации, в Майкрософт провели специальный 
+<A href="http://www.mojaveexperiment.com/" target="_blank">
+Мохави-эксперимент
+</A>
+(Mojave Experiment). Суть его в том, что множеству респондентов, никогда не видевших
+Висту, показали эту самую Висту, но сказав, что это новая секретная версия операционной
+системы под кодовым названием Мохави. "<EM>
+Ну вот, сразу надо было выпускать такую замечательную систему, а не эту глючную Висту
+</EM>
+" - примерно такими были отзывы участников эксперимента.
+</P>
+        <P>
+Виста с SP1 работает еще лучше! Так что лучше Висты может быть только Windows Server
+2008 - про установку сервера в качестве клиентской операционной системы 
+<A href="http://blogs.msdn.com/vijaysk/archive/2008/02/11/using-windows-server-2008-as-a-super-desktop-os.aspx" target="_blank">
+много пишут в Интернете
+</A>
+.
+</P>
+        <P>
+А вы тоже не любите Висту? За что?
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=69F15528-1619-460A-B2AF-92CFB0FDEAB0" />
+      </body>
+      <title>Мохави-эксперимент, или за что вы не любите Висту!!!</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=69f15528-1619-460a-b2af-92cfb0fdeab0</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=69f15528-1619-460a-b2af-92cfb0fdeab0</link>
+      <pubDate>Fri, 01 Aug 2008 07:42:36 GMT</pubDate>
+      <description>&lt;P&gt;
+Висту принято не любить. Она медленная, требует более 4 гигабайт оперативной памяти
+и при этом не умеет их поддерживать, в ней не появилось ничего нового по сравнению
+с Windows XP - много приходится слышать аргументов.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/329a66840303_9D1/image_2.png"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=261 alt=image src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/329a66840303_9D1/image_thumb.png" width=376 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+Чтобы разобраться в ситуации, в Майкрософт провели специальный 
+&lt;A href="http://www.mojaveexperiment.com/" target=_blank&gt;
+Мохави-эксперимент
+&lt;/A&gt;
+(Mojave Experiment). Суть его в том, что множеству респондентов, никогда не видевших
+Висту, показали эту самую Висту, но сказав, что это новая секретная версия операционной
+системы под кодовым названием Мохави. "&lt;EM&gt;
+Ну вот, сразу надо было выпускать такую замечательную систему, а не эту глючную Висту
+&lt;/EM&gt;
+" - примерно такими были отзывы участников эксперимента.
+&lt;/P&gt;
+&lt;P&gt;
+Виста с SP1 работает еще лучше! Так что лучше Висты может быть только Windows Server
+2008 - про установку сервера в качестве клиентской операционной системы 
+&lt;A href="http://blogs.msdn.com/vijaysk/archive/2008/02/11/using-windows-server-2008-as-a-super-desktop-os.aspx" target=_blank&gt;
+много пишут в Интернете
+&lt;/A&gt;
+.
+&lt;/P&gt;
+&lt;P&gt;
+А вы тоже не любите Висту? За что?
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=69F15528-1619-460A-B2AF-92CFB0FDEAB0" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=69f15528-1619-460a-b2af-92cfb0fdeab0</comments>
+      <category>Evangelism;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=9fa07f06-9d33-4a1f-9647-3d8f535791b4</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=9fa07f06-9d33-4a1f-9647-3d8f535791b4</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=9fa07f06-9d33-4a1f-9647-3d8f535791b4</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=9FA07F06-9D33-4A1F-9647-3D8F535791B4</wfw:commentRss>
+      <slash:comments>2</slash:comments>
+      <title>Второй по высоте Старбакс в мире. Экскурсия по Сиэтлу в исполнении Дмитрия Никонова</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=9fa07f06-9d33-4a1f-9647-3d8f535791b4</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=9fa07f06-9d33-4a1f-9647-3d8f535791b4</link>
+      <pubDate>Fri, 01 Aug 2008 06:57:17 GMT</pubDate>
+      <description>&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/CIMG8217.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; MARGIN: 0px 10px 5px 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=217 alt=CIMG8217 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/CIMG8217_thumb.jpg" width=320 align=left border=0&gt;
+&lt;/A&gt;
+В Сиэтле есть небоскреб. Вернее, их есть несколько, но один из них - самый высокий.
+Когда-то (в свой первый визит в Сиэтл) я ошибочно считал, что он вообще самый высокий
+- потому что вспоминал фильм "Неспящие в Сиэтле". Потом оказалось, что самый высокий
+Empire State Building, и пришлось ехать в Нью-Йорк чтобы на него залезть.
+&lt;/P&gt;
+&lt;P&gt;
+Экскурсия на самый высокий небоскреб в Сиэтле стоит 5 долларов. Но для сотрудников,
+работающих в здании, и тех, кто с ними - бесплатно. Так вот оказалось, что в этом
+здании сидит компания Amazon, а в ней работает наш бывший коллега 
+&lt;A href="http://xpeh1.livejournal.com/" target=_blank&gt;
+Дмитрий Никонов
+&lt;/A&gt;
+, наверняка многим из вас известный своими многочисленными докладами на Платформах
+и прочих Российских мероприятиях. Сегодня днем мы наведались к нему в гости. Он был
+в футболке с надписью DevDiv10.
+&lt;/P&gt;
+&lt;P&gt;
+С верхнего 74-го этажа открывается хороший вид на Сиэтл и окрестности - вот лишь малая
+его часть:
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/Seattle%20Panorama_2.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=227 alt="Seattle Panorama" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/Seattle%20Panorama_thumb.jpg" width=674 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+В центре плохо видна гора Mt.Rainier (вулкан), по центру - испытательный аэродром
+Боинг. Основные небоскребы - сзади нас, не видны. Вот отдельная фотография, на которой
+видно, как люди устроили вечеринку на крыше небоскреба:
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/CIMG8212.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=350 alt=CIMG8212 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/CIMG8212_thumb.jpg" width=465 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+Помимо фотографий, Дмитрий провел увлекательную экскурсию по городу. В основном конечно
+он рассказывал про здания, в которых расположен Amazon (таких оказалось помимо самого
+самого высокого небоскреба еще несколько), но заодно немного и про остальной город.
+Первую часть экскурсии мы рады вам предложить в виде видеозаписи:
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:400a21d1-1002-47d5-aec8-407fb9e62977 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=d4970bf8-5894-4b0c-b4c1-b77de6730572 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=c1ab00cc-954c-4c57-b52d-aaca3d548651&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/videoccde82efe6ad.jpg" onload="var downlevelDiv = document.getElementById('d4970bf8-5894-4b0c-b4c1-b77de6730572'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=c1ab00cc-954c-4c57-b52d-aaca3d548651&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;P&gt;
+Оказалось также, что в этом небоскребе расположена вторая по высоте в мире кофейня
+Старбакс (это не считая того, что в Сиэтле расположена первая в мире кофейна этой
+сети) - но находится она не на верхушке здания, а посередине, этаже на 50-ом. А самая
+высокая - в Шанхае.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/CIMG8230.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=404 alt=CIMG8230 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/4c1ec294333e_14531/CIMG8230_thumb.jpg" width=461 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=9FA07F06-9D33-4A1F-9647-3D8F535791B4" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=9fa07f06-9d33-4a1f-9647-3d8f535791b4</comments>
+      <category>Microsoft;Personal;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=8915a283-f76b-402b-b510-a3d3200404e2</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=8915a283-f76b-402b-b510-a3d3200404e2</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=8915a283-f76b-402b-b510-a3d3200404e2</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=8915A283-F76B-402B-B510-A3D3200404E2</wfw:commentRss>
+      <slash:comments>9</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+В молодости я вел семинары по информатике на 1-ом курсе Московского авиационного института.
+Во втором семестре целая тема была посвящена 
+<STRONG>
+разреженным матрицам
+</STRONG>
+- т.е. таким матрицам, у которых ненулевых элементов подавляющее меньшинство - менее
+10%. Неудивительно, что такие матрицы возникают в задачах численного решения дифференциальных
+уравнений, поскольку на сетка диф.ур. превращается в СЛАУ именно с разреженной матрицей.
+И для эффективного хранения и обработки таких матриц приходится использовать специальные
+упакованные форматы представления в памяти.
+</P>
+        <P>
+Оказывается, что разреженные матрицы применяются не только в задачах решения уравнений
+в частных производных. В реальной жизни при построении бизнес-приложений часто возникают
+разреженные наборы данных. Например, мы храним в таблице 
+<STRONG>
+базы данных 
+</STRONG>
+информацию о различных товарах - колбасе, напитках, фотоаппаратах, стиральных машинах
+и т.д. Обычно при этом мы делаем расширенный набор атрибутов - на все случаи жизни.
+Например, атрибут FocalLength будет использовать только для товара типа объектив,
+а для остальных типов будет NULL. Т.е. соответствующая колонка (да и весь набор колонок)
+будет разреженной!
+</P>
+        <P>
+Оказывается, 
+<STRONG>
+SQL Server 2008 
+</STRONG>
+содержит в себе специальные средства работы с разреженными колонками. Столбец можно
+объявить как SPARSE, при этом NULL-элементы потребуют 0 байт для хранения, а ненулевой
+элемент - 4-6 байт. Обращаться в такому элементу можно либо традиционным образом (при
+этом будет затрачиваться на 20% больше ресурсов процессора), либо через XML-фрагмент,
+описывающий все ненулевые SPARSE-атрибуты.
+</P>
+        <P>
+          <STRONG>
+Интересное упражнение 
+</STRONG>
+для студентов, изучающих курс по базам данных - смоделировать такое хранение SPARSE-атрибутов
+на традиционной СУБД (SQL Server 2005), и релизовать доступ к атрибутам с помощью
+встроенной процедуры/функции. Кто-нибудь 
+<STRONG>
+хочет поделиться решением 
+</STRONG>
+в комментах?
+</P>
+        <P>
+А еще SQL Server 2008 содержит множество других долгожданных нововведений. Из наиболее
+интересных: возможность выносить BLOB-элементы во 
+<STRONG>
+внешнее файловое хранилище 
+</STRONG>
+(т.н. 
+<STRONG>
+FILESTREAM
+</STRONG>
+) с последующим доступом к ним через обычные процедуры открытия/закрытия файлов, с
+автоматической поддержкой транзакционности, а также специальный тип 
+<STRONG>
+HierarchyId
+</STRONG>
+, который существенно упрощает хранение 
+<STRONG>
+иерархических данных 
+</STRONG>
+в реляционных таблицах. Как лучше хранить иерархические данные в реляционных таблицах
+- это вообще отдельный разговор, кто-нибудь знает, как это лучше всего делать (если
+при этом нужно уметь отвечать на запросы "все прямые и косвенные потомки данного узла"
+и "путь от корня к данному узлу")?
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=8915A283-F76B-402B-B510-A3D3200404E2" />
+      </body>
+      <title>Разреженные матрицы живее всех живых, или нововведения в SQL Server 2008</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=8915a283-f76b-402b-b510-a3d3200404e2</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=8915a283-f76b-402b-b510-a3d3200404e2</link>
+      <pubDate>Tue, 29 Jul 2008 08:27:11 GMT</pubDate>
+      <description>&lt;P&gt;
+В молодости я вел семинары по информатике на 1-ом курсе Московского авиационного института.
+Во втором семестре целая тема была посвящена 
+&lt;STRONG&gt;
+разреженным матрицам
+&lt;/STRONG&gt;
+- т.е. таким матрицам, у которых ненулевых элементов подавляющее меньшинство - менее
+10%. Неудивительно, что такие матрицы возникают в задачах численного решения дифференциальных
+уравнений, поскольку на сетка диф.ур. превращается в СЛАУ именно с разреженной матрицей.
+И для эффективного хранения и обработки таких матриц приходится использовать специальные
+упакованные форматы представления в памяти.
+&lt;/P&gt;
+&lt;P&gt;
+Оказывается, что разреженные матрицы применяются не только в задачах решения уравнений
+в частных производных. В реальной жизни при построении бизнес-приложений часто возникают
+разреженные наборы данных. Например, мы храним в таблице 
+&lt;STRONG&gt;
+базы данных 
+&lt;/STRONG&gt;
+информацию о различных товарах - колбасе, напитках, фотоаппаратах, стиральных машинах
+и т.д. Обычно при этом мы делаем расширенный набор атрибутов - на все случаи жизни.
+Например, атрибут FocalLength будет использовать только для товара типа объектив,
+а для остальных типов будет NULL. Т.е. соответствующая колонка (да и весь набор колонок)
+будет разреженной!
+&lt;/P&gt;
+&lt;P&gt;
+Оказывается, 
+&lt;STRONG&gt;
+SQL Server 2008 
+&lt;/STRONG&gt;
+содержит в себе специальные средства работы с разреженными колонками. Столбец можно
+объявить как SPARSE, при этом NULL-элементы потребуют 0 байт для хранения, а ненулевой
+элемент - 4-6 байт. Обращаться в такому элементу можно либо традиционным образом (при
+этом будет затрачиваться на 20% больше ресурсов процессора), либо через XML-фрагмент,
+описывающий все ненулевые SPARSE-атрибуты.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;STRONG&gt;
+Интересное упражнение 
+&lt;/STRONG&gt;
+для студентов, изучающих курс по базам данных - смоделировать такое хранение SPARSE-атрибутов
+на традиционной СУБД (SQL Server 2005), и релизовать доступ к атрибутам с помощью
+встроенной процедуры/функции. Кто-нибудь 
+&lt;STRONG&gt;
+хочет поделиться решением 
+&lt;/STRONG&gt;
+в комментах?
+&lt;/P&gt;
+&lt;P&gt;
+А еще SQL Server 2008 содержит множество других долгожданных нововведений. Из наиболее
+интересных: возможность выносить BLOB-элементы во 
+&lt;STRONG&gt;
+внешнее файловое хранилище 
+&lt;/STRONG&gt;
+(т.н. 
+&lt;STRONG&gt;
+FILESTREAM
+&lt;/STRONG&gt;
+) с последующим доступом к ним через обычные процедуры открытия/закрытия файлов, с
+автоматической поддержкой транзакционности, а также специальный тип 
+&lt;STRONG&gt;
+HierarchyId
+&lt;/STRONG&gt;
+, который существенно упрощает хранение 
+&lt;STRONG&gt;
+иерархических данных 
+&lt;/STRONG&gt;
+в реляционных таблицах. Как лучше хранить иерархические данные в реляционных таблицах
+- это вообще отдельный разговор, кто-нибудь знает, как это лучше всего делать (если
+при этом нужно уметь отвечать на запросы "все прямые и косвенные потомки данного узла"
+и "путь от корня к данному узлу")?
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=8915A283-F76B-402B-B510-A3D3200404E2" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=8915a283-f76b-402b-b510-a3d3200404e2</comments>
+      <category>Programming;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=33604adb-5c73-4787-9977-196db9c6a74b</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=33604adb-5c73-4787-9977-196db9c6a74b</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=33604adb-5c73-4787-9977-196db9c6a74b</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=33604ADB-5C73-4787-9977-196DB9C6A74B</wfw:commentRss>
+      <slash:comments>3</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+          <A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/TechReady7_B7B/CIMG8200.jpg">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; MARGIN: 0px 10px 5px 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="373" alt="CIMG8200" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/TechReady7_B7B/CIMG8200_thumb.jpg" width="281" align="left" border="0">
+            </IMG>
+          </A>
+На этой неделе я нахожусь на конференции 
+<STRONG>
+TechReady 7
+</STRONG>
+- грандиозном технологическом мероприятии, проводимом дважды в год с целью повышения
+технической грамотности сотрудников Майкрософт. На этом мероприятии - более 5500 участников
+из различных отделов (сервисы, EPG, DPE), около 800 докладов и лабораторок, соответственно
+еще больше доклачиков - многие из которых приехали прямо из Редмонда, из продуктовых
+групп, чтобы поделиться информацией из первых рук.
+</P>
+        <P>
+На открытии конференции выступал 
+<STRONG>
+Рэй Оззи
+</STRONG>
+- главный архитектор. Он говорил и показывал много такого, о чем говорить нельзя -
+все в основном про Software+Services. Мы не заметили, но менее чем за пару лет у Майкрософт
+появилось очень полноценное предложение для бизнесов: можно запускать приложения как
+у себя на оборудовании (on premise), так и в датацентрах Майкрософт (in the cloud),
+избавляя себя от необходимости заботиться об обеспечении бесперебойной работы, безопасности,
+обновлениях и т.д. И все эти приложения (Office, Exchange, Dynamics CRM, ...) можно
+использовать на целом диапазоне устройств: от десктопа до мобильных устройств до веб-клиента.
+Это настоящее, а куда оно приведет нас завтра - рассказывал нам Рэй Оззи. Из интересного
+- 
+<A href="http://youtube.com/watch?v=lFpwzg-AP_Q&amp;feature=related" target="_blank">
+посмотрите ролик
+</A>
+про Live Mesh.
+</P>
+        <P>
+А еще интересная мысль прозвучала про 
+<STRONG>
+Windows
+</STRONG>
+. Мы все привыкли думать о Windows как об операционной системе, которая работает на
+i386. А на самом деле - это целый бренд: Windows Vista, Windows Live, Windows Mobile,
+Windows Live и т.д. А что такое Windows Live? Это уже не совсем операционная система. 
+<STRONG>
+Windows - это стиль жизни
+</STRONG>
+! (Кстати, это согласуется с тем, о чем говорил Билл Гейтс на своем выступлении перед
+талантливой молодежью в последний свой визит в Москву - конкурентное преимущество
+Windows сейчас в основном не в том, что оно лучше как операционная система - а в том
+experience, который оно дает пользователю).
+</P>
+        <P>
+Подробнее о конференции - в следующих записях, если будет хватать сил и времени. Для
+тех, кому интересны интимные подробности: в Сиэтл я добирался странным маршрутом -
+Москва-Париж-Турин (на поезде)-Париж-Сиэтл. Настолько мне понравился Париж, что я
+решил провести в нем еще один день (после недавней поездки туда на финал Imagine Cup).
+В Турине же я пытался найти фильм Dimenticare Venezia, но безуспешно... Кому интересны
+подробности - спрашивайте.
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=33604ADB-5C73-4787-9977-196DB9C6A74B" />
+      </body>
+      <title>TechReady 7: Конференция для своих</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=33604adb-5c73-4787-9977-196db9c6a74b</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=33604adb-5c73-4787-9977-196db9c6a74b</link>
+      <pubDate>Tue, 29 Jul 2008 08:05:03 GMT</pubDate>
+      <description>&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/TechReady7_B7B/CIMG8200.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; MARGIN: 0px 10px 5px 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=373 alt=CIMG8200 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/TechReady7_B7B/CIMG8200_thumb.jpg" width=281 align=left border=0&gt;
+&lt;/A&gt;
+На этой неделе я нахожусь на конференции 
+&lt;STRONG&gt;
+TechReady 7
+&lt;/STRONG&gt;
+- грандиозном технологическом мероприятии, проводимом дважды в год с целью повышения
+технической грамотности сотрудников Майкрософт. На этом мероприятии - более 5500 участников
+из различных отделов (сервисы, EPG, DPE), около 800 докладов и лабораторок, соответственно
+еще больше доклачиков - многие из которых приехали прямо из Редмонда, из продуктовых
+групп, чтобы поделиться информацией из первых рук.
+&lt;/P&gt;
+&lt;P&gt;
+На открытии конференции выступал 
+&lt;STRONG&gt;
+Рэй Оззи
+&lt;/STRONG&gt;
+- главный архитектор. Он говорил и показывал много такого, о чем говорить нельзя -
+все в основном про Software+Services. Мы не заметили, но менее чем за пару лет у Майкрософт
+появилось очень полноценное предложение для бизнесов: можно запускать приложения как
+у себя на оборудовании (on premise), так и в датацентрах Майкрософт (in the cloud),
+избавляя себя от необходимости заботиться об обеспечении бесперебойной работы, безопасности,
+обновлениях и т.д. И все эти приложения (Office, Exchange, Dynamics CRM, ...) можно
+использовать на целом диапазоне устройств: от десктопа до мобильных устройств до веб-клиента.
+Это настоящее, а куда оно приведет нас завтра - рассказывал нам Рэй Оззи. Из интересного
+- 
+&lt;A href="http://youtube.com/watch?v=lFpwzg-AP_Q&amp;amp;feature=related" target=_blank&gt;
+посмотрите ролик
+&lt;/A&gt;
+про Live Mesh.
+&lt;/P&gt;
+&lt;P&gt;
+А еще интересная мысль прозвучала про 
+&lt;STRONG&gt;
+Windows
+&lt;/STRONG&gt;
+. Мы все привыкли думать о Windows как об операционной системе, которая работает на
+i386. А на самом деле - это целый бренд: Windows Vista, Windows Live, Windows Mobile,
+Windows Live и т.д. А что такое Windows Live? Это уже не совсем операционная система. 
+&lt;STRONG&gt;
+Windows - это стиль жизни
+&lt;/STRONG&gt;
+! (Кстати, это согласуется с тем, о чем говорил Билл Гейтс на своем выступлении перед
+талантливой молодежью в последний свой визит в Москву - конкурентное преимущество
+Windows сейчас в основном не в том, что оно лучше как операционная система - а в том
+experience, который оно дает пользователю).
+&lt;/P&gt;
+&lt;P&gt;
+Подробнее о конференции - в следующих записях, если будет хватать сил и времени. Для
+тех, кому интересны интимные подробности: в Сиэтл я добирался странным маршрутом -
+Москва-Париж-Турин (на поезде)-Париж-Сиэтл. Настолько мне понравился Париж, что я
+решил провести в нем еще один день (после недавней поездки туда на финал Imagine Cup).
+В Турине же я пытался найти фильм Dimenticare Venezia, но безуспешно... Кому интересны
+подробности - спрашивайте.
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=33604ADB-5C73-4787-9977-196DB9C6A74B" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=33604adb-5c73-4787-9977-196db9c6a74b</comments>
+      <category>Microsoft;Programming;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=191cc15d-b575-421b-9854-201e0ed328a5</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=191cc15d-b575-421b-9854-201e0ed328a5</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=191cc15d-b575-421b-9854-201e0ed328a5</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=191CC15D-B575-421B-9854-201E0ED328A5</wfw:commentRss>
+      <slash:comments>6</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Я обычно газеты не читаю. Почему-то быстрее и проще узнавать все новости из Интернета.
+Однако сейчас, благодаря Imagine Cup, появляются новые поводы читать газеты! Вчера
+о наших успехах 
+<A href="http://www.kp.ru/daily/24128.5/349195/" target="_blank">
+написала Комсомольская правда
+</A>
+, сегодня - 
+<A href="http://www.rg.ru/2008/07/15/programmisty.html" target="_blank">
+Российская газета
+</A>
+. Внутри - смотрите, как выглядит оригинальная газетная полоса! Фотография ребят из
+Питера - великолепна!
+</P>
+        <P>
+          <A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-15_RG_IC_resize_2.jpg">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="594" alt="2008-07-15_RG_IC_resize" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-15_RG_IC_resize_thumb.jpg" width="237" border="0">
+            </IMG>
+          </A>
+          <A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-14_KP_IC08_resized_2.jpg">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="343" alt="2008-07-14_KP_IC08_resized" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-14_KP_IC08_resized_thumb.jpg" width="444" border="0">
+            </IMG>
+          </A>
+        </P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=191CC15D-B575-421B-9854-201E0ED328A5" />
+      </body>
+      <title>Читайте газеты!</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=191cc15d-b575-421b-9854-201e0ed328a5</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=191cc15d-b575-421b-9854-201e0ed328a5</link>
+      <pubDate>Tue, 15 Jul 2008 11:34:58 GMT</pubDate>
+      <description>&lt;P&gt;
+Я обычно газеты не читаю. Почему-то быстрее и проще узнавать все новости из Интернета.
+Однако сейчас, благодаря Imagine Cup, появляются новые поводы читать газеты! Вчера
+о наших успехах 
+&lt;A href="http://www.kp.ru/daily/24128.5/349195/" target=_blank&gt;
+написала Комсомольская правда
+&lt;/A&gt;
+, сегодня - 
+&lt;A href="http://www.rg.ru/2008/07/15/programmisty.html" target=_blank&gt;
+Российская газета
+&lt;/A&gt;
+. Внутри - смотрите, как выглядит оригинальная газетная полоса! Фотография ребят из
+Питера - великолепна!
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-15_RG_IC_resize_2.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=594 alt=2008-07-15_RG_IC_resize src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-15_RG_IC_resize_thumb.jpg" width=237 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-14_KP_IC08_resized_2.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=343 alt=2008-07-14_KP_IC08_resized src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/df2d2e1c5a43_DB0E/2008-07-14_KP_IC08_resized_thumb.jpg" width=444 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=191CC15D-B575-421B-9854-201E0ED328A5" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=191cc15d-b575-421b-9854-201e0ed328a5</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=067ceb85-a6a1-4c4b-8228-5a9d788358b1</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=067ceb85-a6a1-4c4b-8228-5a9d788358b1</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=067ceb85-a6a1-4c4b-8228-5a9d788358b1</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=067CEB85-A6A1-4C4B-8228-5A9D788358B1</wfw:commentRss>
+      <slash:comments>4</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Сегодня вся Российская делегация Imagine Cup вернулась в Россию: команда Ignition
+- прямым рейсом из Парижа в Санкт-Петербург, команда братьев Гребновых - в Москву,
+где их сразу же ждала съемочная группа канала Вести, чтобы снять репортаж. После этого
+ребята поехали в студию, где дали интервью в прямом эфире.
+</P>
+        <P>
+Я опишу соревнования чуть более подробно в ближайшие дни - с фото- и видео-репортажами,
+с подробным рассказом о том, что же такое Engineering Excellence Award, и почему он
+в некотором смысле полезнее, чем призовые места. В комментариях принимаются заявки
+о том, что бы Вы хотели услышать в первую очередь.
+</P>
+        <P>
+Пока же приглашаю посмотреть телевизионные репортажи с канала "Вести", которые вышли
+в последние часы:
+</P>
+        <UL>
+          <LI>
+            <A href="http://www.vesti.ru/videos?vid=138993&amp;cid=1&amp;doc_type=news&amp;doc_id=193481">
+Встреча Ильи и Сергея в аэропорту Шереметьево
+</A>
+с небольшим интервью. 
+<LI><A href="http://www.vesti.ru/doc.html?id=193481">
+Интервью с Ильей и Сергеем в студии
+</A><LI><A href="http://www.vesti.ru/doc.html?id=193238">
+Репортаж с церемонии награждения
+</A>
+, интервью с Роджерио Панигасси, с командой Хошими и Питерской командой Ignition,
+с Виктором Павловичем Гергелем, деканом факультета ВМК ННГУ, который принимал участие
+в работе жюри соревнований. 
+<LI><A href="http://www.vesti.ru/videos?vid=138860&amp;cid=7&amp;doc_type=news&amp;doc_id=193229">
+Укороченная версия предыдущего репортажа
+</A></LI></LI></LI></LI>
+        </UL>
+        <P>
+Также про победу России рассказали на Радио Маяк: 
+<A href="http://www.radiomayak.ru/player.html?aid=97754&amp;id=84009&amp;mode=0&amp;type=RNEWS">
+тут
+</A>
+ и 
+<A href="http://www.radiomayak.ru/doc.html?id=83999">
+тут
+</A>
+. У всех участников брали телефонное интервью, но использовали ли его в эфире
+- я пока не понял. Если найдете еще интересные ссылки - пишите в комментах.
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=067CEB85-A6A1-4C4B-8228-5A9D788358B1" />
+      </body>
+      <title>Возвращение Российской делегации</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=067ceb85-a6a1-4c4b-8228-5a9d788358b1</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=067ceb85-a6a1-4c4b-8228-5a9d788358b1</link>
+      <pubDate>Wed, 09 Jul 2008 22:59:16 GMT</pubDate>
+      <description>&lt;P&gt;
+Сегодня вся Российская делегация Imagine Cup вернулась в Россию: команда Ignition
+- прямым рейсом из Парижа в Санкт-Петербург, команда братьев Гребновых - в Москву,
+где их сразу же ждала съемочная группа канала Вести, чтобы снять репортаж. После этого
+ребята поехали в&amp;nbsp;студию, где дали интервью в прямом эфире.
+&lt;/P&gt;
+&lt;P&gt;
+Я опишу соревнования чуть более подробно в ближайшие дни - с фото- и видео-репортажами,
+с подробным рассказом о том, что же такое Engineering Excellence Award, и почему он
+в некотором смысле полезнее, чем призовые места. В комментариях принимаются заявки
+о том, что бы Вы хотели услышать в первую очередь.
+&lt;/P&gt;
+&lt;P&gt;
+Пока же приглашаю посмотреть телевизионные репортажи с канала "Вести", которые вышли
+в последние часы:
+&lt;/P&gt;
+&lt;UL&gt;
+&lt;LI&gt;
+&lt;A href="http://www.vesti.ru/videos?vid=138993&amp;amp;cid=1&amp;amp;doc_type=news&amp;amp;doc_id=193481"&gt;
+Встреча Ильи и Сергея в аэропорту Шереметьево
+&lt;/A&gt;
+с небольшим интервью. 
+&lt;LI&gt;
+&lt;A href="http://www.vesti.ru/doc.html?id=193481"&gt;
+Интервью с Ильей и Сергеем в студии
+&lt;/A&gt;
+&lt;LI&gt;
+&lt;A href="http://www.vesti.ru/doc.html?id=193238"&gt;
+Репортаж с церемонии награждения
+&lt;/A&gt;
+, интервью с Роджерио Панигасси, с командой Хошими и Питерской командой Ignition,
+с Виктором Павловичем Гергелем, деканом факультета ВМК ННГУ, который принимал участие
+в работе жюри соревнований. 
+&lt;LI&gt;
+&lt;A href="http://www.vesti.ru/videos?vid=138860&amp;amp;cid=7&amp;amp;doc_type=news&amp;amp;doc_id=193229"&gt;
+Укороченная версия предыдущего репортажа
+&lt;/A&gt;
+&lt;/LI&gt;
+&lt;/UL&gt;
+&lt;P&gt;
+Также про победу России рассказали на Радио Маяк: 
+&lt;A href="http://www.radiomayak.ru/player.html?aid=97754&amp;amp;id=84009&amp;amp;mode=0&amp;amp;type=RNEWS"&gt;
+тут
+&lt;/A&gt;
+&amp;nbsp;и 
+&lt;A href="http://www.radiomayak.ru/doc.html?id=83999"&gt;
+тут
+&lt;/A&gt;
+.&amp;nbsp;У всех участников брали телефонное интервью, но использовали ли его в эфире
+- я пока не понял. Если найдете еще интересные ссылки - пишите в комментах.
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=067CEB85-A6A1-4C4B-8228-5A9D788358B1" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=067ceb85-a6a1-4c4b-8228-5a9d788358b1</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=b4713e2a-2a38-48b3-a711-4e6864af3ad4</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=b4713e2a-2a38-48b3-a711-4e6864af3ad4</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=b4713e2a-2a38-48b3-a711-4e6864af3ad4</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=B4713E2A-2A38-48B3-A711-4E6864AF3AD4</wfw:commentRss>
+      <slash:comments>6</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Только что в Лувре состоялась церемония награждения победителей Imagine Cup 2008!
+Как мы и предполагали, первое место заняла команда Австралии. К счастью, мы записали
+ее выступление на финале целиком, и скоро представим вашему вниманию. О распределении
+остальных мест вы сможете узнать на сайте 
+<A href="http://www.imaginecup.com">
+www.imaginecup.com
+</A>
+ и в 
+<A href="http://imaginecupfinalsinparis.spaces.live.com/default.aspx">
+официальном блоге Imagine Cup
+</A>
+. Также обратите внимание, что поменялся дизайн сайта - это означает, что официально
+начался Imagine Cup следующего года, с финалом в Египте. Тема соревнований следующего
+года - 
+<STRONG>
+представьте себе мир, в котором технологии помогают решать сложнейшие проблемы современности
+</STRONG>
+.
+</P>
+        <P>
+На соревнованиях 2008 года Россия выступила неплохо, получив 
+<STRONG>
+два 
+</STRONG>
+приза. Самое главное достижение, безусловно, это 
+<STRONG>
+первое место в категории Хошими
+</STRONG>
+. Команда братьев Гребновых из Иваново стала последними в истории чемпионами мира
+по Хошими - ведь в следующем году официально в международных соревнованиях такой категории
+не будет. Кроме того, команда сборная команда вузов Питера Ignition получила специальный
+приз 
+<STRONG>
+Engineering Excellence 
+</STRONG>
+- за лучшее техническое решение, т.е. вошла в тройку самых "грамотных" программных
+проектов в мире. Это для всех нас было неожиданностью, безусловно приятной! Приз включает
+в себя поездку всей команды 
+<STRONG>
+на неделю в Редмонд
+</STRONG>
+и общение с техническими специалистами из Майкрософт, которые помогут реализовать
+проект наиболее технологически грамотно.
+</P>
+        <P>
+Подробности и видео с церемонии награждения смотите чуть позже.
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=B4713E2A-2A38-48B3-A711-4E6864AF3AD4" />
+      </body>
+      <title>Подведены результаты Imagine Cup 2008. Запущен Imagine Cup 2009!</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=b4713e2a-2a38-48b3-a711-4e6864af3ad4</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=b4713e2a-2a38-48b3-a711-4e6864af3ad4</link>
+      <pubDate>Tue, 08 Jul 2008 15:04:47 GMT</pubDate>
+      <description>&lt;P&gt;
+Только что в Лувре состоялась церемония награждения победителей Imagine Cup 2008!
+Как мы и предполагали, первое место заняла команда Австралии. К счастью, мы записали
+ее выступление на финале целиком, и скоро представим вашему вниманию. О распределении
+остальных мест вы сможете узнать на сайте 
+&lt;A href="http://www.imaginecup.com"&gt;
+www.imaginecup.com
+&lt;/A&gt;
+&amp;nbsp;и в 
+&lt;A href="http://imaginecupfinalsinparis.spaces.live.com/default.aspx"&gt;
+официальном блоге Imagine Cup
+&lt;/A&gt;
+. Также обратите внимание, что поменялся дизайн сайта - это означает, что официально
+начался Imagine Cup следующего года, с финалом в Египте. Тема соревнований следующего
+года - 
+&lt;STRONG&gt;
+представьте себе мир, в котором технологии помогают решать сложнейшие проблемы современности
+&lt;/STRONG&gt;
+.
+&lt;/P&gt;
+&lt;P&gt;
+На соревнованиях 2008 года Россия выступила неплохо, получив 
+&lt;STRONG&gt;
+два 
+&lt;/STRONG&gt;
+приза. Самое главное достижение, безусловно, это 
+&lt;STRONG&gt;
+первое место в категории Хошими
+&lt;/STRONG&gt;
+. Команда братьев Гребновых из Иваново стала последними в истории чемпионами мира
+по Хошими - ведь в следующем году официально в международных соревнованиях такой категории
+не будет. Кроме того, команда сборная команда вузов Питера Ignition получила специальный
+приз 
+&lt;STRONG&gt;
+Engineering Excellence 
+&lt;/STRONG&gt;
+- за лучшее техническое решение,&amp;nbsp;т.е. вошла в тройку самых "грамотных" программных
+проектов в мире. Это для всех нас было неожиданностью, безусловно приятной! Приз включает
+в себя поездку всей команды 
+&lt;STRONG&gt;
+на неделю в Редмонд
+&lt;/STRONG&gt;
+и общение с техническими специалистами из Майкрософт, которые помогут реализовать
+проект наиболее технологически грамотно.
+&lt;/P&gt;
+&lt;P&gt;
+Подробности и видео с церемонии награждения смотите чуть позже.
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=B4713E2A-2A38-48B3-A711-4E6864AF3AD4" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=b4713e2a-2a38-48b3-a711-4e6864af3ad4</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=22d266e7-d07a-4830-8dcc-28c8c017fbe6</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=22d266e7-d07a-4830-8dcc-28c8c017fbe6</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=22d266e7-d07a-4830-8dcc-28c8c017fbe6</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=22D266E7-D07A-4830-8DCC-28C8C017FBE6</wfw:commentRss>
+      <slash:comments>18</slash:comments>
+      <title>Последнее выступление Российской команды</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=22d266e7-d07a-4830-8dcc-28c8c017fbe6</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=22d266e7-d07a-4830-8dcc-28c8c017fbe6</link>
+      <pubDate>Sun, 06 Jul 2008 08:50:45 GMT</pubDate>
+      <description>&lt;P&gt;
+Только что объявили шесть команд-финалистов, которые представят свои проекты завтра
+со сцены перед всеми участниками соревнований. К большому сожалению нас и всей Российской
+делегации, Россия не вошла в число этих команд. 
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/3475a8742b1a_987F/CIMG7652.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=287 alt=CIMG7652 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/3475a8742b1a_987F/CIMG7652_thumb.jpg" width=712 border=0&gt;
+&lt;/A&gt;
+&amp;nbsp;
+&lt;/P&gt;
+&lt;P&gt;
+Почему так получилось - тема отдельного рассуждения, и мы наверное им займемся, когда
+пройдут первые эмоции. Сейчас же мы предлагаем вам посмотреть выступление Российской
+команды во втором раунде - оно было на мой взгляд очень достойным, ребята, несмотря
+на чудовищную усталость, сделали все возможное!
+&lt;/P&gt;
+&lt;P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:91a30479-59b3-4548-9911-05608b400095 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=13b504d5-7065-4b51-96f7-e918fddd7f7b style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=dc9910c1-c5b6-4cde-9ade-682809a11a67&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/3475a8742b1a_987F/video1cb618aadb23.jpg" onload="var downlevelDiv = document.getElementById('13b504d5-7065-4b51-96f7-e918fddd7f7b'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=dc9910c1-c5b6-4cde-9ade-682809a11a67&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;P&gt;
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:5a567fff-bc83-41a2-acc7-e5c55dc62bf1 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=b8df0b67-52bc-4aef-ab19-093611221034 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=facf13c5-6fb8-4aaa-aa8d-88513fd8972f&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/3475a8742b1a_987F/video6a552e9a50ef.jpg" onload="var downlevelDiv = document.getElementById('b8df0b67-52bc-4aef-ab19-093611221034'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=facf13c5-6fb8-4aaa-aa8d-88513fd8972f&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=22D266E7-D07A-4830-8DCC-28C8C017FBE6" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=22d266e7-d07a-4830-8dcc-28c8c017fbe6</comments>
+      <category>Imagine Cup;Student;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=6a40184e-6b09-4d2c-9f5c-1915585c6481</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=6a40184e-6b09-4d2c-9f5c-1915585c6481</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=6a40184e-6b09-4d2c-9f5c-1915585c6481</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=6A40184E-6B09-4D2C-9F5C-1915585C6481</wfw:commentRss>
+      <slash:comments>1</slash:comments>
+      <title>Выставка студенческих проектов</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=6a40184e-6b09-4d2c-9f5c-1915585c6481</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=6a40184e-6b09-4d2c-9f5c-1915585c6481</link>
+      <pubDate>Sun, 06 Jul 2008 06:20:23 GMT</pubDate>
+      <description>&lt;P&gt;
+Сегодня посередине дня состоялась выставка студенческих проектов - это такое специальное
+время, когда студенты сидят на стендах, отвечают на вопросы жюри, прессы и друг друга,
+рассказывают о проектах и показывают их. Это пока что первый шоукейс из двух, нам
+обещают еще один более глобальный в Лувре, но уже на этом шоукейсе я получил огромное
+удовольсткие, наблюдая за множеством интереснейших проектов со стороны! В этой записи
+- мои краткие фотовпечатления (которые также можно посмотреть 
+&lt;A href="http://www.flickr.com/photos/shwarsico/sets/72157605942861565/" target=_blank&gt;
+в моей фликер-ленте
+&lt;/A&gt;
+, ближе к концу) и небольшой видео-обзор. Чуть позже я планирую выложить интервью
+с некоторыми командами, когда дойдут руки до обработки видео.
+&lt;/P&gt;
+&lt;P&gt;
+&amp;nbsp;&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7611.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; BORDER-RIGHT-WIDTH: 0px" height=306 alt=CIMG7611 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7611_thumb.jpg" width=230 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7626.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; BORDER-RIGHT-WIDTH: 0px" height=305 alt=CIMG7626 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7626_thumb.jpg" width=230 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7628.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; BORDER-RIGHT-WIDTH: 0px" height=305 alt=CIMG7628 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7628_thumb.jpg" width=230 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7612.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; BORDER-RIGHT-WIDTH: 0px" height=258 alt=CIMG7612 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7612_thumb.jpg" width=342 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7617.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; BORDER-RIGHT-WIDTH: 0px" height=257 alt=CIMG7617 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7617_thumb.jpg" width=341 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7629.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 226px; HEIGHT: 303px; BORDER-RIGHT-WIDTH: 0px" height=313 alt=CIMG7629 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7629_thumb.jpg" width=236 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7630.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 231px; HEIGHT: 305px; BORDER-RIGHT-WIDTH: 0px" height=314 alt=CIMG7630 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7630_thumb.jpg" width=236 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7635.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 209px; HEIGHT: 305px; BORDER-RIGHT-WIDTH: 0px" height=314 alt=CIMG7635 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7635_thumb.jpg" width=236 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7627.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 339px; HEIGHT: 252px; BORDER-RIGHT-WIDTH: 0px" height=263 alt=CIMG7627 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7627_thumb.jpg" width=349 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7625.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 321px; HEIGHT: 255px; BORDER-RIGHT-WIDTH: 0px" height=264 alt=CIMG7625 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7625_thumb.jpg" width=350 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7624.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 332px; HEIGHT: 251px; BORDER-RIGHT-WIDTH: 0px" height=266 alt=CIMG7624 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7624_thumb.jpg" width=353 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7623.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 339px; HEIGHT: 253px; BORDER-RIGHT-WIDTH: 0px" height=266 alt=CIMG7623 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7623_thumb.jpg" width=353 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7622.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 342px; HEIGHT: 254px; BORDER-RIGHT-WIDTH: 0px" height=266 alt=CIMG7622 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7622_thumb.jpg" width=354 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7618.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 335px; HEIGHT: 254px; BORDER-RIGHT-WIDTH: 0px" height=266 alt=CIMG7618 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7618_thumb.jpg" width=353 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7619.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 344px; HEIGHT: 259px; BORDER-RIGHT-WIDTH: 0px" height=269 alt=CIMG7619 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7619_thumb.jpg" width=357 border=0&gt;
+&lt;/A&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7621.jpg"&gt;
+&lt;IMG style="BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; WIDTH: 339px; HEIGHT: 259px; BORDER-RIGHT-WIDTH: 0px" height=269 alt=CIMG7621 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/CIMG7621_thumb.jpg" width=357 border=0&gt;
+&lt;/A&gt;
+&lt;/P&gt;
+&lt;P&gt;
+Последняя фотография - это стенд команды из Чехии, которые тоже сделали что-то связанное
+с пожаротушением, но не смогли нам об этом связанно рассказать. Еще пожаротушением
+(точнее - дизастер-обнарижением) занималась команда из Болгарии, интервью с ней -
+в следующих сериях. Сейчас же краткое видео с шоукейса, которое даст еще более правильное
+представление о происходящем.
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:ed5dd5d5-4669-4747-b2bd-82aca3a6af09 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=36f7ccfd-e102-4645-b0f3-a18d7cd6b3eb style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=2298ff7b-86eb-41de-84b4-3698f07f9523&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e231331f2dbc_26C8/video6e525f3f8c16.jpg" onload="var downlevelDiv = document.getElementById('36f7ccfd-e102-4645-b0f3-a18d7cd6b3eb'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=2298ff7b-86eb-41de-84b4-3698f07f9523&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=6A40184E-6B09-4D2C-9F5C-1915585C6481" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=6a40184e-6b09-4d2c-9f5c-1915585c6481</comments>
+      <category>Imagine Cup;Student;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=3a037fd7-dde9-4a0a-9e21-8fe2f4da57d1</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=3a037fd7-dde9-4a0a-9e21-8fe2f4da57d1</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=3a037fd7-dde9-4a0a-9e21-8fe2f4da57d1</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=3A037FD7-DDE9-4A0A-9E21-8FE2F4DA57D1</wfw:commentRss>
+      <slash:comments>4</slash:comments>
+      <title>Imagine Cup: небольшое интервью с Российской командой</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=3a037fd7-dde9-4a0a-9e21-8fe2f4da57d1</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=3a037fd7-dde9-4a0a-9e21-8fe2f4da57d1</link>
+      <pubDate>Sat, 05 Jul 2008 17:03:09 GMT</pubDate>
+      <description>&lt;P&gt;
+Сразу после объявления полуфиналистов мы взяли небольшое интервью у Российской команды,
+чтобы узнать ее настроения. Смотрите на наших экранах.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:af2dd36b-d29e-4a7f-a57a-8a6f41760e1f style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=878c9e4c-42c7-4c60-a93b-e6e4a4d39bb3 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=bbe36721-792c-4b84-b6b4-b27ca82ff36b&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCup_10BEB/videoa561de068f5c.jpg" onload="var downlevelDiv = document.getElementById('878c9e4c-42c7-4c60-a93b-e6e4a4d39bb3'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=bbe36721-792c-4b84-b6b4-b27ca82ff36b&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;P&gt;
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=3A037FD7-DDE9-4A0A-9E21-8FE2F4DA57D1" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=3a037fd7-dde9-4a0a-9e21-8fe2f4da57d1</comments>
+      <category>Imagine Cup;Student;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=4596b526-5b68-4597-901f-caaf806c5cd8</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=4596b526-5b68-4597-901f-caaf806c5cd8</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=4596b526-5b68-4597-901f-caaf806c5cd8</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=4596B526-5B68-4597-901F-CAAF806C5CD8</wfw:commentRss>
+      <slash:comments>7</slash:comments>
+      <title>Imagine Cup 2008: Церемония объявления полуфиналистов</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=4596b526-5b68-4597-901f-caaf806c5cd8</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=4596b526-5b68-4597-901f-caaf806c5cd8</link>
+      <pubDate>Sat, 05 Jul 2008 16:14:47 GMT</pubDate>
+      <description>&lt;P&gt;
+Около получаса назад завершилась церемония объявления полуфиналистов международного
+финала конкурса программных проектов Imagine Cup. Мы предлагаем вам посмотреть эту
+церемонию целиком, чтобы ощутить дух присутствия на мероприятии.
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:b6478edd-26e3-4690-9010-2757385eb3ac style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=fd91f780-6161-457d-a1b4-bc27c7bfe48a style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=be27638f-5359-44e1-a5e8-9a4d27ec126c&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCup2008_10095/video139dc3873447.jpg" onload="var downlevelDiv = document.getElementById('fd91f780-6161-457d-a1b4-bc27c7bfe48a'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=be27638f-5359-44e1-a5e8-9a4d27ec126c&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=4596B526-5B68-4597-901F-CAAF806C5CD8" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=4596b526-5b68-4597-901f-caaf806c5cd8</comments>
+      <category>Imagine Cup;Student;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=da041bd2-787f-4c75-b77f-2fa5d72ef369</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=da041bd2-787f-4c75-b77f-2fa5d72ef369</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=da041bd2-787f-4c75-b77f-2fa5d72ef369</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=DA041BD2-787F-4C75-B77F-2FA5D72EF369</wfw:commentRss>
+      <slash:comments>2</slash:comments>
+      <title>Проект Хошими: открытие соревнований и интервью с командой потенциального противника</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=da041bd2-787f-4c75-b77f-2fa5d72ef369</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=da041bd2-787f-4c75-b77f-2fa5d72ef369</link>
+      <pubDate>Sat, 05 Jul 2008 00:44:06 GMT</pubDate>
+      <description>&lt;P&gt;
+С небольшим опозданием по сравнению с реальным временем мы показываем Вам начало соревнований
+по проекту Хошими, а также небольшое интервью, взятое прямо перед началом у команды
+из Украины - между прочем одной из немногих онлайн-команд в Хошими и алгоритмах (если
+не единственной), в которых присутствуют прекрасные представительницы прекрасного
+пола.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:b6ec11fc-3476-47ed-bf77-ba004c13ce3f style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=ce1af7b0-700f-4807-b40f-62c7483dd0dc style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=98cf510c-acb6-48e3-a103-d898be45cf73&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/d0cf09e0dc17_2671/video6d6f0a8d70a0.jpg" onload="var downlevelDiv = document.getElementById('ce1af7b0-700f-4807-b40f-62c7483dd0dc'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=98cf510c-acb6-48e3-a103-d898be45cf73&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;P&gt;
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:e95b6724-1450-4685-9cca-1cff3a76d358 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=5c31b25c-b431-4383-b7b7-6b3e5b97edb7 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=a1595a3a-8efd-452b-98b8-a3e4055c7e83&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/d0cf09e0dc17_2671/video7225852e550d.jpg" onload="var downlevelDiv = document.getElementById('5c31b25c-b431-4383-b7b7-6b3e5b97edb7'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=a1595a3a-8efd-452b-98b8-a3e4055c7e83&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=DA041BD2-787F-4C75-B77F-2FA5D72EF369" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=da041bd2-787f-4c75-b77f-2fa5d72ef369</comments>
+      <category>Imagine Cup;Student;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=69c86d50-aab8-4199-867e-b939a008c30e</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=69c86d50-aab8-4199-867e-b939a008c30e</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=69c86d50-aab8-4199-867e-b939a008c30e</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=69C86D50-AAB8-4199-867E-B939A008C30E</wfw:commentRss>
+      <slash:comments>9</slash:comments>
+      <title>Посмотрите на Международный финал Imagine Cup своими глазами!</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=69c86d50-aab8-4199-867e-b939a008c30e</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=69c86d50-aab8-4199-867e-b939a008c30e</link>
+      <pubDate>Fri, 04 Jul 2008 15:49:06 GMT</pubDate>
+      <description>&lt;P&gt;
+Международный финал Imagine Cup - это грандиозное мероприятие! Уверен, что команда
+из Нижнего Новгорода, приехавшая на него посмотреть - не пожалеют об этом, и сделают
+в следующем году все возможное, чтобы победить и попасть сюда уже как участники. Передать
+эти впечатления на фотографии невозможно - поэтому мы постарались снять небольшое
+видео, показывающее, что же видят студенты, приехавшие на финал. Что они чувствуют
+- мы можем только догадываться! Смотрите нас практически в прямом эфире из Парижа!
+&lt;/P&gt;
+&lt;P&gt;
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:89642652-5c2e-4765-aede-d7a3e4c28ae7 style="PADDING-RIGHT: 10px; DISPLAY: inline; PADDING-LEFT: 0px; FLOAT: left; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=94796535-0e6c-4468-8481-eb2eea41c7a6 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=7e43a6fa-968b-46be-bf85-9769b506174c&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCup_FA8E/videode22e6ce2c07.jpg" onload="var downlevelDiv = document.getElementById('94796535-0e6c-4468-8481-eb2eea41c7a6'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=7e43a6fa-968b-46be-bf85-9769b506174c&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+В первом эпизоде, мы показываем общий вид на местро проведения соревнований, проходим
+по основным помещениям и показываем их глазами студентов, заглядываем в комнату для
+соревнований и почти заглядываем в секретные комнаты "только для персонала", а также
+берем небольшое интервью с Роджерио Панигасси, который в этом году отвечает за проведение
+Imagine Cup на мировом уровне. 
+&lt;P&gt;
+&lt;/P&gt;
+&lt;BR clear=all&gt;
+&lt;P&gt;
+&lt;/P&gt;
+&lt;P&gt;
+&amp;nbsp;
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:efcf4d8c-666a-4979-be69-1c0d121fe97e style="PADDING-RIGHT: 5px; DISPLAY: inline; PADDING-LEFT: 0px; FLOAT: left; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=472b5011-d23e-4d6c-a751-31d09f37308f style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=ef88a7a4-567d-4bc0-abc0-0a180169f7aa&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCup_FA8E/video55bae61a806c.jpg" onload="var downlevelDiv = document.getElementById('472b5011-d23e-4d6c-a751-31d09f37308f'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=ef88a7a4-567d-4bc0-abc0-0a180169f7aa&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+Во втором эпизоде, мы показываем местные достопримечательности (в частности, статую
+свободы), проходим мимо стойки регистрации с футболками, показываем стойки с едой,
+дегустируем французский бублик, а также показываем выставочный зал, где все команды
+встречаются, демонстрируют свои проекты и знакомятся друг с другом. Мы пытаемся взять
+интервью в команды из Словакии, и нам это даже удается, но покажем мы это только в
+следующем номере наших новостей.&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=69C86D50-AAB8-4199-867E-B939A008C30E" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=69c86d50-aab8-4199-867e-b939a008c30e</comments>
+      <category>Imagine Cup;Student;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=e83c8765-2312-4632-961f-15e55576dce9</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=e83c8765-2312-4632-961f-15e55576dce9</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=e83c8765-2312-4632-961f-15e55576dce9</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=E83C8765-2312-4632-961F-15E55576DCE9</wfw:commentRss>
+      <slash:comments>8</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Итак, в первом раунде Software Design предстоит отобрать 12 лучших команд из более
+чем 60-ти. Раньше для этого делили все страны на группы, и отбирали по две лучшие
+команды из каждой группы. В результате жюри было также поделено на группы, и они слушали
+некоторое количество команд из своей группы.
+</P>
+        <P>
+          <A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/MSF_B665/CIMG7601.jpg">
+            <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; MARGIN: 0px 10px 0px 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="280" alt="CIMG7601" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/MSF_B665/CIMG7601_thumb.jpg" width="419" align="left" border="0">
+            </IMG>
+          </A>
+В этом году решили применить полностью инновационный подход - больше групп жюри не
+будет, а для каждой команды будет формироваться свое уникальное мини-жюри из 4-х человек.
+Принципы остаются теми же, каждую команду послушают два раза по 4 члена жюри, но команда
+судей для каждого из выступлений будет формироваться динамически! Если рассматривать
+заслушивание команды как микро-проект, то это получается очень в духе MSF - формировать
+команду (судей) под каждый проект заново.
+</P>
+        <P>
+Как следствие - больше нет "групп", нет споров о том, соревнуемся ли мы с сильными
+или слабыми соперниками - есть просто пул команд, пул судей, общие критерии оценки
+и способы усреднения. Человеческий фактор минимален!
+</P>
+        <P>
+Что вы думаете о таком подходе к судейству? Он скорее позитивен, или есть оборотные
+стороны?
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=E83C8765-2312-4632-961F-15E55576DCE9" />
+      </body>
+      <title>Новые правила отбора команд, MSF и микропроектный подход к выступлениям.</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=e83c8765-2312-4632-961f-15e55576dce9</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=e83c8765-2312-4632-961f-15e55576dce9</link>
+      <pubDate>Fri, 04 Jul 2008 10:58:26 GMT</pubDate>
+      <description>&lt;P&gt;
+Итак, в первом раунде Software Design предстоит отобрать 12 лучших команд из более
+чем 60-ти. Раньше для этого делили все страны на группы, и отбирали по две лучшие
+команды из каждой группы. В результате жюри было также поделено на группы, и они слушали
+некоторое количество команд из своей группы.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;A href="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/MSF_B665/CIMG7601.jpg"&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; MARGIN: 0px 10px 0px 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=280 alt=CIMG7601 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/MSF_B665/CIMG7601_thumb.jpg" width=419 align=left border=0&gt;
+&lt;/A&gt;
+В этом году решили применить полностью инновационный подход - больше групп жюри не
+будет, а для каждой команды будет формироваться свое уникальное мини-жюри из 4-х человек.
+Принципы остаются теми же, каждую команду послушают два раза по 4 члена жюри, но команда
+судей для каждого из выступлений будет формироваться динамически! Если рассматривать
+заслушивание команды как микро-проект, то это получается очень в духе MSF - формировать
+команду (судей) под каждый проект заново.
+&lt;/P&gt;
+&lt;P&gt;
+Как следствие - больше нет "групп", нет споров о том, соревнуемся ли мы с сильными
+или слабыми соперниками - есть просто пул команд, пул судей, общие критерии оценки
+и способы усреднения. Человеческий фактор минимален!
+&lt;/P&gt;
+&lt;P&gt;
+Что вы думаете о таком подходе к судейству? Он скорее позитивен, или есть оборотные
+стороны?
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=E83C8765-2312-4632-961F-15E55576DCE9" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=e83c8765-2312-4632-961f-15e55576dce9</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=93f35dc5-cf60-4e6e-9f9e-5d0222023963</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=93f35dc5-cf60-4e6e-9f9e-5d0222023963</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=93f35dc5-cf60-4e6e-9f9e-5d0222023963</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=93F35DC5-CF60-4E6E-9F9E-5D0222023963</wfw:commentRss>
+      <slash:comments>6</slash:comments>
+      <title>Интервью с Ильей Гребновым - шокирующие подробности про проект Хошими!</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=93f35dc5-cf60-4e6e-9f9e-5d0222023963</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=93f35dc5-cf60-4e6e-9f9e-5d0222023963</link>
+      <pubDate>Fri, 04 Jul 2008 08:52:33 GMT</pubDate>
+      <description>&lt;P&gt;
+Вчера вечером, менее чем за сутки до 24-часового соревнования, я немного побеседовал
+с Ильей Гребновым про то, как лучше построить работу в условиях ограниченного времени
+и ресурсов. Мне было интересно, планируют ли ребята спать в предстоящие 24 часа, что
+они будут брать с собой (шоколад? вино?), будут ли работать одновременно или по-очереди.
+В ходе беседы Илья рассказал много интересного, в том числе некоторую внутреннюю информацию
+про будущее проекта Хошими.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:e1c9cf85-0663-4c3d-9cea-b58cb4884b17 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=683f5720-a74f-4467-9589-26551b6d5cc9 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=b98eb2e3-bcb1-45da-b97f-a86ce709e2ae&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e9d361d925cf_B505/videocb289562793d.jpg" onload="var downlevelDiv = document.getElementById('683f5720-a74f-4467-9589-26551b6d5cc9'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=b98eb2e3-bcb1-45da-b97f-a86ce709e2ae&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;P&gt;
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:87442d79-311d-46c3-8199-34abdd723724 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=04def9e0-f668-44fb-b9d1-1228bbcfadad style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=2bce1735-4181-49d3-b516-0c537b4b9a06&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/e9d361d925cf_B505/video85d7cb7ec990.jpg" onload="var downlevelDiv = document.getElementById('04def9e0-f668-44fb-b9d1-1228bbcfadad'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=2bce1735-4181-49d3-b516-0c537b4b9a06&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=93F35DC5-CF60-4E6E-9F9E-5D0222023963" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=93f35dc5-cf60-4e6e-9f9e-5d0222023963</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=0932580e-0236-4fef-98cf-415b02960af9</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=0932580e-0236-4fef-98cf-415b02960af9</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=0932580e-0236-4fef-98cf-415b02960af9</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=0932580E-0236-4FEF-98CF-415B02960AF9</wfw:commentRss>
+      <slash:comments>3</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+На Imagine Cup мы все фотографируем! Вы можете посмотреть фотографии в нескольких
+местах: в 
+<A href="http://www.flickr.com/photos/shwarsico/sets/72157605942861565/" target="_blank">
+моей фликер-ленте
+</A>
+, в 
+<A href="http://www.flickr.com/photos/24145407@N08/sets/72157605222276778/" target="_blank">
+ленте братьев Гребновых
+</A>
+, у 
+<A href="http://yunkaskl.spaces.live.com/photos/cns!7C6FA289B30A5FE7!170/?startingImageIndex=25&amp;commentsExpand=0&amp;addCommentExpand=0&amp;addCommentFocus=0&amp;pauseSlideshow=0" target="_blank">
+Екатерины Лажинцевой
+</A>
+. Более того, благодаря современным технологиям, Вы можете посмотреть мои фотографии
+прямо тут - с помощью Popfly я за 2 минуты создал соответствующий мэшап. Если у Вас
+не установлен Сильверлайт - установите и наслаждайтесь!
+</P>
+        <iframe style="width:500px; height:375px;" src="http://www.popfly.com/users/sos/ImagineCup2008Carousel.small" frameborder="no" allowtransparency="true">
+        </iframe>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=0932580E-0236-4FEF-98CF-415B02960AF9" />
+      </body>
+      <title>Мы покажем вам некоторые фотографии из Парижа: с помощью PopFly!</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=0932580e-0236-4fef-98cf-415b02960af9</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=0932580e-0236-4fef-98cf-415b02960af9</link>
+      <pubDate>Fri, 04 Jul 2008 08:30:25 GMT</pubDate>
+      <description>&lt;P&gt;
+На Imagine Cup мы все фотографируем! Вы можете посмотреть фотографии в нескольких
+местах: в 
+&lt;A href="http://www.flickr.com/photos/shwarsico/sets/72157605942861565/" target=_blank&gt;
+моей фликер-ленте
+&lt;/A&gt;
+, в 
+&lt;A href="http://www.flickr.com/photos/24145407@N08/sets/72157605222276778/" target=_blank&gt;
+ленте братьев Гребновых
+&lt;/A&gt;
+, у 
+&lt;A href="http://yunkaskl.spaces.live.com/photos/cns!7C6FA289B30A5FE7!170/?startingImageIndex=25&amp;amp;commentsExpand=0&amp;amp;addCommentExpand=0&amp;amp;addCommentFocus=0&amp;amp;pauseSlideshow=0" target=_blank&gt;
+Екатерины Лажинцевой
+&lt;/A&gt;
+. Более того, благодаря современным технологиям, Вы можете посмотреть мои фотографии
+прямо тут - с помощью Popfly я за 2 минуты создал соответствующий мэшап. Если у Вас
+не установлен Сильверлайт - установите и наслаждайтесь!
+&lt;/P&gt;
+&lt;iframe style='width:500px; height:375px;' src='http://www.popfly.com/users/sos/ImagineCup2008Carousel.small' frameborder='no' allowtransparency='true'&gt;
+&lt;/iframe&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=0932580E-0236-4FEF-98CF-415B02960AF9" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=0932580e-0236-4fef-98cf-415b02960af9</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=86123a3a-552b-4c90-b570-fcbe95d1867e</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=86123a3a-552b-4c90-b570-fcbe95d1867e</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=86123a3a-552b-4c90-b570-fcbe95d1867e</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=86123A3A-552B-4C90-B570-FCBE95D1867E</wfw:commentRss>
+      <slash:comments>1</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Сегодня вечером состоялась церемония открытия Imagine Cup - для этого всех посадили
+в автобус и отвезли в Парижскую мэрию - достаточно красивое здание дворцового типа
+с роскошным убранством внутри. Сама церемония состояла из нескольких частей: 
+<STRONG>
+парад студентов
+</STRONG>
+, когда студенты из разных стран в алфавитном порядке поднимались по лестнице, их
+снимали и показывали в большом зале, где все улюлукали и кричали; около часа 
+<STRONG>
+ожидания 
+</STRONG>
+в зале, когда все socialize-ились, фотографировались и порядком устали, 
+<STRONG>
+зажигательной речи 
+</STRONG>
+заместителя мэра Парижа по образованию, директора академических программ Майкрософт 
+<STRONG>
+Джо Вилсона
+</STRONG>
+, президента Microsoft International 
+<STRONG>
+Жана-Филипа Куртуа
+</STRONG>
+, а также главы французского представительства компании.
+</P>
+        <P>
+Хороший 
+<A href="http://reddevils.weblog.com/2008/7/Day1-evening.html" target="_blank">
+фоторепортаж с мероприятия
+</A>
+опубликовали ребята из команды красных дьяволов. Также рекомендую почитать "взгляд
+из-за кулис" в 
+<A href="http://katyal.livejournal.com" target="_blank">
+блоге Екатерины Лажинцевой
+</A>
+, руководителя академических программ Майкрософт в России.
+</P>
+        <P>
+          <IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height="267" alt="CIMG7584" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCup_46A2/CIMG7584_1.jpg" width="201" border="0">
+ <IMG height="267" alt="" src="http://farm4.static.flickr.com/3100/2634233377_4870853315.jpg?v=0" width="475"></IMG></IMG>
+        </P>
+        <P>
+В заключении церемонии была подана такая странная еда, что Илья и Сергей, у которых
+завтра начаниются ответственные 24-часовые соревнования, есть ее не рискнули. Помимо
+разных сладких бутербродиков с паштетами и скрепленных маленькими деревянными скрепочками
+рулетиками из овощей, там были замечательные пюре-напитки зеленого цвета, которые
+делались из перемолотой в блендере пасты с добавлением непонятно чего, там были шарики
+мороженого в пюре со вкусом сладкого лака для ногтей... в общем, это видимо была все-таки
+не молекулярная кухня, но что-то посередине между ней и фьюженом.
+</P>
+        <P>
+          <IMG style="MARGIN: 0px 10px 0px 0px" height="205" alt="" src="http://farm4.static.flickr.com/3039/2634234379_c4c63f1593.jpg?v=0" width="365" align="left">
+В результате с ребятами мы отправились кушать пиццу в итальянский ресторанчик, в котором
+мне чудом удалось попробовать исключительно вкусную лазанью - вкуснее нее я ел один
+раз в жизни в Италии, но попытки найти что-то отдаленно похожее потом в Москве и других
+местах не были успешными. Так что теперь я знаю второй ресторанчик в мире, где готовят
+отменную лазанью (а также неплохой карпаччо, который вы тоже можете видеть на фотографии,
+и пиццу с пармской ветчиной).
+</IMG>
+        </P>
+        <P>
+В ресторане мы немного побеседовали с Ильей про предстоящие завтра соревнования -
+видеозапись этой беседы я предоставлю Вашему вниманию в следующем выпуске своих новостей.
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=86123A3A-552B-4C90-B570-FCBE95D1867E" />
+      </body>
+      <title>Церемония открытия Imagine Cup: несколько фотографий</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=86123a3a-552b-4c90-b570-fcbe95d1867e</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=86123a3a-552b-4c90-b570-fcbe95d1867e</link>
+      <pubDate>Fri, 04 Jul 2008 01:01:26 GMT</pubDate>
+      <description>&lt;P&gt;
+Сегодня вечером состоялась церемония открытия Imagine Cup - для этого всех посадили
+в автобус и отвезли в Парижскую мэрию - достаточно красивое здание дворцового типа
+с роскошным убранством внутри. Сама церемония состояла из нескольких частей: 
+&lt;STRONG&gt;
+парад студентов
+&lt;/STRONG&gt;
+, когда студенты из разных стран в алфавитном порядке поднимались по лестнице, их
+снимали и показывали в большом зале, где все улюлукали и кричали; около часа 
+&lt;STRONG&gt;
+ожидания 
+&lt;/STRONG&gt;
+в зале, когда все socialize-ились, фотографировались и порядком устали, 
+&lt;STRONG&gt;
+зажигательной речи 
+&lt;/STRONG&gt;
+заместителя мэра Парижа по образованию, директора академических программ Майкрософт 
+&lt;STRONG&gt;
+Джо Вилсона
+&lt;/STRONG&gt;
+, президента Microsoft International 
+&lt;STRONG&gt;
+Жана-Филипа Куртуа
+&lt;/STRONG&gt;
+, а также главы французского представительства компании.
+&lt;/P&gt;
+&lt;P&gt;
+Хороший 
+&lt;A href="http://reddevils.weblog.com/2008/7/Day1-evening.html" target=_blank&gt;
+фоторепортаж с мероприятия
+&lt;/A&gt;
+опубликовали ребята из команды красных дьяволов. Также рекомендую почитать "взгляд
+из-за кулис" в 
+&lt;A href="http://katyal.livejournal.com" target=_blank&gt;
+блоге Екатерины Лажинцевой
+&lt;/A&gt;
+, руководителя академических программ Майкрософт в России.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;IMG style="BORDER-RIGHT: 0px; BORDER-TOP: 0px; BORDER-LEFT: 0px; BORDER-BOTTOM: 0px" height=267 alt=CIMG7584 src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCup_46A2/CIMG7584_1.jpg" width=201 border=0&gt;
+&amp;nbsp;&lt;IMG height=267 alt="" src="http://farm4.static.flickr.com/3100/2634233377_4870853315.jpg?v=0" width=475&gt;
+&lt;/P&gt;
+&lt;P&gt;
+В заключении церемонии была подана такая странная еда, что Илья и Сергей, у которых
+завтра начаниются ответственные 24-часовые соревнования, есть ее не рискнули. Помимо
+разных сладких бутербродиков с паштетами и скрепленных маленькими деревянными скрепочками
+рулетиками из овощей, там были замечательные пюре-напитки зеленого цвета, которые
+делались из перемолотой в блендере пасты с добавлением непонятно чего, там были шарики
+мороженого в пюре со вкусом сладкого лака для ногтей... в общем, это видимо была все-таки
+не молекулярная кухня, но что-то посередине между ней и фьюженом.
+&lt;/P&gt;
+&lt;P&gt;
+&lt;IMG style="MARGIN: 0px 10px 0px 0px" height=205 alt="" src="http://farm4.static.flickr.com/3039/2634234379_c4c63f1593.jpg?v=0" width=365 align=left&gt;
+В результате с ребятами мы отправились кушать пиццу в итальянский ресторанчик, в котором
+мне чудом удалось попробовать исключительно вкусную лазанью - вкуснее нее я ел один
+раз в жизни в Италии, но попытки найти что-то отдаленно похожее потом в Москве и других
+местах не были успешными. Так что теперь я знаю второй ресторанчик в мире, где готовят
+отменную лазанью (а также неплохой карпаччо, который вы тоже можете видеть на фотографии,
+и пиццу с пармской ветчиной).
+&lt;/P&gt;
+&lt;P&gt;
+В ресторане мы немного побеседовали с Ильей про предстоящие завтра соревнования -
+видеозапись этой беседы я предоставлю Вашему вниманию в следующем выпуске своих новостей.
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=86123A3A-552B-4C90-B570-FCBE95D1867E" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=86123a3a-552b-4c90-b570-fcbe95d1867e</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=5619ed26-8065-4e1f-b43b-7ca3adb1de87</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=5619ed26-8065-4e1f-b43b-7ca3adb1de87</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=5619ed26-8065-4e1f-b43b-7ca3adb1de87</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=5619ED26-8065-4E1F-B43B-7CA3ADB1DE87</wfw:commentRss>
+      <slash:comments>3</slash:comments>
+      <title>Imagine Cup: как будут проходить соревнования Project Hoshimi и первый тур Software Design</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=5619ed26-8065-4e1f-b43b-7ca3adb1de87</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=5619ed26-8065-4e1f-b43b-7ca3adb1de87</link>
+      <pubDate>Fri, 04 Jul 2008 00:29:58 GMT</pubDate>
+      <description>&lt;P&gt;
+Сегодня первый день соревнований, все оборудование уже смонтировали, и мы буквально
+в первые часы заглянули в комнаты, в которых будут проходить соревнования по тем категориям,
+в которых есть Российские участники: Software Design и Проект Хошими. Приглашаем вас
+посмотреть на обстановку в этих комнатах вместе с нами.
+&lt;/P&gt;
+&lt;P&gt;
+Комната для первого тура выступлений в категории Software Design:
+&lt;/P&gt;
+&lt;P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:5bec28c2-de34-43a8-a040-cf246a44a8e7 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=2a311d16-9a1d-407d-8a42-83c2aabc7902 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=d18340e5-0134-4c7c-bde7-4297f60bf83f&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCupProjectHoshimiSoftwareDesign_3F36/videocb135287983d.jpg" onload="var downlevelDiv = document.getElementById('2a311d16-9a1d-407d-8a42-83c2aabc7902'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=d18340e5-0134-4c7c-bde7-4297f60bf83f&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;P&gt;
+&lt;/P&gt;
+&lt;P&gt;
+Комнаты для соревнований по Проекту Хошими:
+&lt;/P&gt;
+&lt;DIV class=wlWriterSmartContent id=scid:5737277B-5D6D-4f48-ABFC-DD9C333F4C5D:e45660a9-2d2b-4230-9b25-d1bfcc1a12bc style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV id=3a916092-8563-42e5-a708-5a5e190f5e70 style="PADDING-RIGHT: 0px; DISPLAY: inline; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px"&gt;
+&lt;DIV&gt;
+&lt;A href="http://video.msn.com/video.aspx?vid=b2fc6b96-a745-4496-b3e0-bc0ba577c96c&amp;amp;from=writer" target=_new&gt;
+&lt;IMG alt="" src="http://blogs.gotdotnet.ru/personal/sos/content/binary/WindowsLiveWriter/ImagineCupProjectHoshimiSoftwareDesign_3F36/video9cbc32e27e79.jpg" onload="var downlevelDiv = document.getElementById('3a916092-8563-42e5-a708-5a5e190f5e70'); downlevelDiv.innerHTML = &amp;quot;&lt;div&gt;&lt;embed src=\&amp;quot;http://images.video.msn.com/flash/soapbox1_1.swf\&amp;quot; quality=\&amp;quot;high\&amp;quot; width=\&amp;quot;432\&amp;quot; height=\&amp;quot;364\&amp;quot; wmode=\&amp;quot;transparent\&amp;quot; type=\&amp;quot;application/x-shockwave-flash\&amp;quot; pluginspage=\&amp;quot;http://macromedia.com/go/getflashplayer\&amp;quot; flashvars=\&amp;quot;c=v&amp;amp;v=b2fc6b96-a745-4496-b3e0-bc0ba577c96c&amp;amp;from=writer\&amp;quot; &gt;&lt;\/embed&gt;&lt;\/div&gt;&amp;quot;;" galleryimg="no"&gt;
+&lt;/A&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;/DIV&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=5619ED26-8065-4E1F-B43B-7CA3ADB1DE87" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=5619ed26-8065-4e1f-b43b-7ca3adb1de87</comments>
+      <category>Imagine Cup;Student;Video</category>
+    </item>
+    <item xml:lang="ru-RU">
+      <trackback:ping>http://blogs.gotdotnet.ru/personal/sos/Trackback.aspx?guid=7a5d9f8e-8348-448d-9d60-08a6e1b3c5a9</trackback:ping>
+      <pingback:server>http://blogs.gotdotnet.ru/personal/sos/pingback.aspx</pingback:server>
+      <pingback:target>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=7a5d9f8e-8348-448d-9d60-08a6e1b3c5a9</pingback:target>
+      <dc:creator>Дмитрий Сошников</dc:creator>
+      <wfw:comment>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=7a5d9f8e-8348-448d-9d60-08a6e1b3c5a9</wfw:comment>
+      <wfw:commentRss>http://blogs.gotdotnet.ru/personal/sos/SyndicationService.asmx/GetEntryCommentsRss?guid=7A5D9F8E-8348-448D-9D60-08A6E1B3C5A9</wfw:commentRss>
+      <slash:comments>4</slash:comments>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <P>
+Сегодня - подготовительный день соревнований, через полчаса все участники конкурса
+на автобусах отправятся в City Hall, где состоится церемония открытия. Сами соревнования
+начнутся завтра, 4 июля, во второй половине дня (первая половина - это брифинг участников).
+В 14:00 по Парижскому времени (16:00 по Москве) за работу примется команда Хошимистов,
+при этом освободятся они только через 24 часа. Первые два выступления команды Software
+Design состоятся завтра вечером (в 21:10) и послезавтра (5 июля) днем в 13:55. Объявление
+результатов первого тура Software Design будет в 16:30 (18:30 по Москве) 5-го июля
+- тогда же ждите от нас первых реальных новостей о продвижении нашей команды!
+</P>
+        <img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=7A5D9F8E-8348-448D-9D60-08A6E1B3C5A9" />
+      </body>
+      <title>Стало известно время выступления нашей команды в Париже</title>
+      <guid isPermaLink="false">http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=7a5d9f8e-8348-448d-9d60-08a6e1b3c5a9</guid>
+      <link>http://blogs.gotdotnet.ru/personal/sos/PermaLink.aspx?guid=7a5d9f8e-8348-448d-9d60-08a6e1b3c5a9</link>
+      <pubDate>Thu, 03 Jul 2008 13:57:29 GMT</pubDate>
+      <description>&lt;P&gt;
+Сегодня - подготовительный день соревнований, через полчаса все участники конкурса
+на автобусах отправятся в City Hall, где состоится церемония открытия. Сами соревнования
+начнутся завтра, 4 июля, во второй половине дня (первая половина - это брифинг участников).
+В 14:00 по Парижскому времени (16:00 по Москве) за работу примется команда Хошимистов,
+при этом освободятся они только через 24 часа. Первые два выступления команды Software
+Design состоятся завтра вечером (в 21:10) и послезавтра (5 июля) днем в 13:55. Объявление
+результатов первого тура Software Design будет в 16:30 (18:30 по Москве) 5-го июля
+- тогда же ждите от нас первых реальных новостей о продвижении нашей команды!
+&lt;/P&gt;
+&lt;img width="0" height="0" src="http://blogs.gotdotnet.ru/personal/sos/aggbug.ashx?id=7A5D9F8E-8348-448D-9D60-08A6E1B3C5A9" /&gt;</description>
+      <comments>http://blogs.gotdotnet.ru/personal/sos/CommentView.aspx?guid=7a5d9f8e-8348-448d-9d60-08a6e1b3c5a9</comments>
+      <category>Imagine Cup;Student</category>
+    </item>
+  </channel>
+</rss>

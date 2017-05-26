@@ -1,0 +1,33 @@
+%{
+  open Ast
+%}
+
+%start start
+
+%token <string> ID
+%token <System.Int32> INT
+%token LET LETREC FUN IN LPAREN RPAREN END BEGIN IF THEN ELSE SEMI EOF PLUS MINUS TIMES DIV EQ ARROW DOT LESS MORE
+
+%type < Ast.prog > start
+
+%%
+
+start: Prog { $1 }
+
+Prog: Expr { $1 }
+
+SimpleExpr: 
+    | ID                      { Var($1) }
+    | INT                     { Int($1)  }
+    | PLUS { PFunc("+")  } | MINUS { PFunc("-")  } ...
+    | FUN ID ARROW Expr { Lam($2,$4) }
+    | LPAREN Expr RPAREN { $2 }
+    | IF Expr THEN Expr ELSE Expr { Cond($2,$4,$6) }
+    | LET ID EQ Expr IN Expr { Let($2,$4,$6) }
+    | LETREC ID EQ Expr IN Expr { LetRec($2,$4,$6) }
+
+Expr: AppList { $1 }
+
+AppList:
+    | SimpleExpr { $1 }
+    | AppList DOT SimpleExpr { App($1,$3) }

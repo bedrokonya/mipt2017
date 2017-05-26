@@ -1,0 +1,25 @@
+{
+ open System
+ open Pars
+ open Lexing
+}
+
+let digit = ['0'-'9']
+let whitespace = [' ' '\t' ]
+let newline = ('\n' | '\r' '\n')
+
+rule token = parse
+| whitespace { token lexbuf }
+| newline    { token lexbuf }
+| "let"    { LET }
+| "then"    { THEN }
+| "else"    { ELSE }
+| "("       { LPAREN }
+| ">"       { MORE }
+...
+| ";"       { SEMI }
+| ['a'-'z']+    
+            { ID(lexeme lexbuf) }
+| ['-']?digit+  
+            { INT (Int32.Parse(lexeme lexbuf)) }
+| eof   { EOF }
